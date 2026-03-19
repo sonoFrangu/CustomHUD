@@ -1,0 +1,12 @@
+/time set night
+/time set 2d
+/time set 324d
+/time set 0
+/time set night
+/time set noon
+/time set night
+/time set midnight
+/time set noon
+/summon minecraft:wither
+/kill @e
+/time set 345d

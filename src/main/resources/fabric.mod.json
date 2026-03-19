@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "customhud",
+  "version": "1.0.0",
+  "name": "Custom HUD",
+  "description": "Aggiunge una bellissima barra temporale e le icone delle modalità di gioco in cima allo schermo!",
+  "authors": [
+    "SCARABOCCHIO100"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/mod/la-tua-mod",
+    "sources": "https://github.com/tuonome/customhud"
+  },
+  "license": "MIT",
+  "icon": "assets/customhud/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "org.frangu.customhud.client.CustomhudClient"
+    ]
+  },
+  "mixins": [
+    "customhud.mixins.json",
+    {
+      "config": "customhud.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
