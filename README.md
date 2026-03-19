@@ -1,4 +1,4 @@
-# 🌅 [Beautiful Day Counter]
+# 🌅 Beautiful Day Counter
 
 Ever lose track of time while mining deep underground or building your next mega-base? **[Nome Mod]** is a client-side mod that adds a beautiful, vanilla-friendly HUD to the top of your screen, keeping you perfectly synced with the Minecraft world.
 
