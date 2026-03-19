@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "customhud",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "Custom HUD",
   "description": "Aggiunge una bellissima barra temporale e le icone delle modalità di gioco in cima allo schermo!",
   "authors": [
@@ -9,7 +9,7 @@
   ],
   "contact": {
     "homepage": "https://modrinth.com/project/beautiful-day-counter",
-    "sources": "https://github.com/tuonome/customhud"
+    "sources": "https://github.com/sonoFrangu/CustomHUD"
   },
   "license": "MIT",
   "icon": "assets/customhud/icon.png",

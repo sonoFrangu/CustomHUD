@@ -10,3 +10,8 @@
 /summon minecraft:wither
 /kill @e
 /time set 345d
+/time set night
+/time set day
+/time add 100
+/time add 100t
+/time add 500
