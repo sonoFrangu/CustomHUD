@@ -1,15 +1,20 @@
 package org.frangu.customhud.client;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.GameMode;
 import net.minecraft.client.gl.RenderPipelines;
+import org.lwjgl.glfw.GLFW;
 
 public class CustomhudClient implements ClientModInitializer {
 
@@ -23,18 +28,34 @@ public class CustomhudClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        CustomHudConfig.load();
+
+        KeyBinding configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.customhud.open_config",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_H,
+                KeyBinding.Category.MISC
+        ));
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (configKeyBinding.wasPressed()) {
+                client.setScreen(new ConfigScreen(client.currentScreen));
+            }
+        });
+
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             ClientPlayerEntity player = client.player;
 
-            // 1. Controlli di visibilità (F1 o F3)
             if (player == null || client.world == null) return;
             if (client.options.hudHidden || client.getDebugHud().shouldShowDebugHud()) return;
 
-            // 2. Logica modalità di gioco (cache icona)
+            CustomHudConfig config = CustomHudConfig.INSTANCE;
+
+            if (!config.showDayCounter && !config.showClock && !config.showBossbar) return;
+
             GameMode currentGameMode = client.interactionManager.getCurrentGameMode();
             boolean isHardcore = client.world.getLevelProperties().isHardcore();
-
             if (currentGameMode != lastGameMode) {
                 lastGameMode = currentGameMode;
                 if (currentGameMode == GameMode.CREATIVE) cachedIconItem = new ItemStack(Items.GRASS_BLOCK);
@@ -43,75 +64,99 @@ public class CustomhudClient implements ClientModInitializer {
                 else cachedIconItem = ItemStack.EMPTY;
             }
 
-            // 3. Calcolo del tempo in-game
             long totalTime = client.world.getTimeOfDay();
             long timeOfDay = totalTime % 24000L;
-            long hours = (timeOfDay / 1000L + 6) % 24;
+            long hours24 = (timeOfDay / 1000L + 6) % 24;
             long minutes = (timeOfDay % 1000L) * 60 / 1000L;
             long days = totalTime / 24000L;
 
-            // 4. Calcolo coordinate e dimensioni a schermo
-            int screenWidth = client.getWindow().getScaledWidth();
-            int barWidth = 182;
-            int barX = (screenWidth - barWidth) / 2;
-            int barY = 25;
-            int textY = barY - 12;
+            String timeText = "";
+            if (config.use12HourFormat) {
+                long hours12 = hours24 % 12;
+                if (hours12 == 0) hours12 = 12;
+                String ampm = (hours24 < 12) ? "AM" : "PM";
+                timeText = String.format("%d:%02d %s", hours12, minutes, ampm);
+            } else {
+                timeText = String.format("%02d:%02d", hours24, minutes);
+            }
 
             Text dayText = Text.translatable("hud.customhud.day", days);
-            String timeText = String.format("%02d:%02d", hours, minutes);
 
-            int totalTextWidth = 13 + client.textRenderer.getWidth(dayText) + 15 + 13 + client.textRenderer.getWidth(timeText);
+            int screenWidth = client.getWindow().getScaledWidth();
+            int screenHeight = client.getWindow().getScaledHeight();
+            int barWidth = 182;
+            int barX = (screenWidth - barWidth) / 2;
+
+            // ==========================================
+            // POSIZIONAMENTO SEMPLIFICATO
+            // ==========================================
+            int barY;
+            if (config.positionBottom) {
+                int bottomOffset = 45;
+                if (player.isSpectator()) {
+                    bottomOffset = 15;
+                } else if (!player.isCreative()) {
+                    bottomOffset = 55;
+                    if (player.getArmor() > 0 || player.getAir() < player.getMaxAir()) {
+                        bottomOffset = 70;
+                    }
+                }
+                barY = screenHeight - bottomOffset;
+            } else {
+                // Se è in alto, stiamo fermi a 25.
+                // È il Mixin che pensa a spostare il Wither in giù!
+                barY = 25;
+            }
+
+            int textY = barY - 12;
+
+            int totalTextWidth = 0;
+            if (config.showDayCounter) totalTextWidth += 13 + client.textRenderer.getWidth(dayText);
+            if (config.showDayCounter && config.showClock) totalTextWidth += 15;
+            if (config.showClock) totalTextWidth += 13 + client.textRenderer.getWidth(timeText);
+
             int currentX = (screenWidth - totalTextWidth) / 2;
 
-            // 5. Rendering testi e icone
-            // Icona Gamemode
-            if (lastGameMode == GameMode.SURVIVAL) {
-                drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, isHardcore ? HARDCORE_HEART_FULL : HEART_FULL, currentX, textY - 1, 9, 9);
-            } else if (!cachedIconItem.isEmpty()) {
+            if (config.showDayCounter) {
+                if (lastGameMode == GameMode.SURVIVAL) {
+                    drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, isHardcore ? HARDCORE_HEART_FULL : HEART_FULL, currentX, textY - 1, 9, 9);
+                } else if (!cachedIconItem.isEmpty()) {
+                    drawContext.getMatrices().pushMatrix();
+                    drawContext.getMatrices().translate((float) currentX, (float) (textY - 1));
+                    drawContext.getMatrices().scale(0.6f, 0.6f);
+                    drawContext.drawItem(cachedIconItem, 0, 0);
+                    drawContext.getMatrices().popMatrix();
+                }
+                currentX += 13;
+                drawContext.drawText(client.textRenderer, dayText, currentX, textY, 0xFFFFFFFF, true);
+                currentX += client.textRenderer.getWidth(dayText) + 15;
+            }
+
+            if (config.showClock) {
                 drawContext.getMatrices().pushMatrix();
                 drawContext.getMatrices().translate((float) currentX, (float) (textY - 1));
                 drawContext.getMatrices().scale(0.6f, 0.6f);
-                drawContext.drawItem(cachedIconItem, 0, 0);
+                drawContext.drawItem(new ItemStack(Items.CLOCK), 0, 0);
                 drawContext.getMatrices().popMatrix();
+                currentX += 13;
+                drawContext.drawText(client.textRenderer, timeText, currentX, textY, 0xFFFFFFFF, true);
             }
-            currentX += 13;
 
-            // Testo Giorno
-            drawContext.drawText(client.textRenderer, dayText, currentX, textY, 0xFFFFFFFF, true);
-            currentX += client.textRenderer.getWidth(dayText) + 15;
+            if (config.showBossbar) {
+                drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, BOSS_BAR_BACKGROUND, barX, barY, barWidth, 5);
+                long timeSinceMidnight = (timeOfDay + 6000L) % 24000L;
+                float progress = (float) timeSinceMidnight / 24000f;
+                int currentProgressWidth = (int) (barWidth * progress);
 
-            // Icona Orologio
-            drawContext.getMatrices().pushMatrix();
-            drawContext.getMatrices().translate((float) currentX, (float) (textY - 1));
-            drawContext.getMatrices().scale(0.6f, 0.6f);
-            drawContext.drawItem(new ItemStack(Items.CLOCK), 0, 0);
-            drawContext.getMatrices().popMatrix();
-            currentX += 13;
-
-            // Testo Ora
-            drawContext.drawText(client.textRenderer, timeText, currentX, textY, 0xFFFFFFFF, true);
-
-            // 6. Rendering bossbar fluida (Sfondo e Progresso)
-            drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, BOSS_BAR_BACKGROUND, barX, barY, barWidth, 5);
-
-            long timeSinceMidnight = (timeOfDay + 6000L) % 24000L;
-            float progress = (float) timeSinceMidnight / 24000f;
-            int currentProgressWidth = (int) (barWidth * progress);
-
-            if (currentProgressWidth > 0) {
-                float[] rgb = getSmoothColor(timeSinceMidnight);
-                int r = (int) (rgb[0] * 255);
-                int g = (int) (rgb[1] * 255);
-                int b = (int) (rgb[2] * 255);
-                int colorInt = (255 << 24) | (r << 16) | (g << 8) | b; // Formato ARGB
-
-                // Disegna la texture bianca applicando il filtro colore (colorInt)
-                drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, BAR_WHITE, 182, 5, 0, 0, barX, barY, currentProgressWidth, 5, colorInt);
+                if (currentProgressWidth > 0) {
+                    float[] rgb = getSmoothColor(timeSinceMidnight);
+                    int colorInt = (255 << 24) | ((int)(rgb[0]*255) << 16) | ((int)(rgb[1]*255) << 8) | (int)(rgb[2]*255);
+                    drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, BAR_WHITE, 182, 5, 0, 0, barX, barY, currentProgressWidth, 5, colorInt);
+                }
             }
         });
     }
 
-    // Calcola l'interpolazione dei colori in base alle fasi della giornata
     private float[] getSmoothColor(long ticks) {
         float[] yellow = {1.0f, 0.9f, 0.2f};
         float[] blue   = {0.2f, 0.6f, 1.0f};
@@ -125,7 +170,6 @@ public class CustomhudClient implements ClientModInitializer {
         else { t = (ticks - 18000) / 6000f; return lerpColor(pink, purple, t); }
     }
 
-    // Interpolazione lineare tra due colori RGB (LERP)
     private float[] lerpColor(float[] c1, float[] c2, float t) {
         return new float[]{
                 c1[0] + (c2[0] - c1[0]) * t,

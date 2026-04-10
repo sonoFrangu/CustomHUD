@@ -15,3 +15,10 @@
 /time add 100
 /time add 100t
 /time add 500
+/gamemode survival
+/summon minecraft:ender_dragon
+/gamemode creative
+/gamemode survival
+/gamemode creative
+/gamemode survival
+/gamemode creative
