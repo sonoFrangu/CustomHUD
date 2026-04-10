@@ -1,0 +1,29 @@
+{
+  "stats": {
+    "minecraft:used": {
+      "minecraft:soul_sand": 4,
+      "minecraft:iron_leggings": 1,
+      "minecraft:iron_helmet": 1,
+      "minecraft:wither_skeleton_skull": 3,
+      "minecraft:iron_chestplate": 1,
+      "minecraft:iron_boots": 1
+    },
+    "minecraft:custom": {
+      "minecraft:time_since_rest": 1623,
+      "minecraft:walk_one_cm": 73,
+      "minecraft:leave_game": 1,
+      "minecraft:walk_under_water_one_cm": 1113,
+      "minecraft:damage_taken": 120,
+      "minecraft:play_time": 1623,
+      "minecraft:jump": 6,
+      "minecraft:time_since_death": 1623,
+      "minecraft:swim_one_cm": 2060,
+      "minecraft:total_world_time": 1824,
+      "minecraft:fly_one_cm": 10329,
+      "minecraft:walk_on_water_one_cm": 2005,
+      "minecraft:crouch_one_cm": 6,
+      "minecraft:sneak_time": 35
+    }
+  },
+  "DataVersion": 4671
+}
