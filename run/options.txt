@@ -15,7 +15,7 @@ glintSpeed:0.5
 glintStrength:0.75
 graphicsPreset:"fancy"
 prioritizeChunkUpdates:1
-fullscreen:false
+fullscreen:true
 gamma:0.5
 guiScale:2
 maxAnisotropyBit:1

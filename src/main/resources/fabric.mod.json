@@ -17,6 +17,9 @@
   "entrypoints": {
     "client": [
       "org.frangu.customhud.client.CustomhudClient"
+    ],
+    "modmenu": [
+      "org.frangu.customhud.client.CustomHudModMenu"
     ]
   },
   "mixins": [

@@ -51,7 +51,6 @@ public class CustomhudClient implements ClientModInitializer {
             if (client.options.hudHidden || client.getDebugHud().shouldShowDebugHud()) return;
 
             CustomHudConfig config = CustomHudConfig.INSTANCE;
-
             if (!config.showDayCounter && !config.showClock && !config.showBossbar) return;
 
             GameMode currentGameMode = client.interactionManager.getCurrentGameMode();
@@ -87,9 +86,6 @@ public class CustomhudClient implements ClientModInitializer {
             int barWidth = 182;
             int barX = (screenWidth - barWidth) / 2;
 
-            // ==========================================
-            // POSIZIONAMENTO SEMPLIFICATO
-            // ==========================================
             int barY;
             if (config.positionBottom) {
                 int bottomOffset = 45;
@@ -103,8 +99,6 @@ public class CustomhudClient implements ClientModInitializer {
                 }
                 barY = screenHeight - bottomOffset;
             } else {
-                // Se è in alto, stiamo fermi a 25.
-                // È il Mixin che pensa a spostare il Wither in giù!
                 barY = 25;
             }
 
@@ -119,7 +113,11 @@ public class CustomhudClient implements ClientModInitializer {
 
             if (config.showDayCounter) {
                 if (lastGameMode == GameMode.SURVIVAL) {
-                    drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, isHardcore ? HARDCORE_HEART_FULL : HEART_FULL, currentX, textY - 1, 9, 9);
+                    Identifier heartTex = isHardcore ? HARDCORE_HEART_FULL : HEART_FULL;
+                    // 1. DISEGNA L'OMBRA (Spostata di +1, +1 e tinta di nero trasparente 0x80000000)
+                    drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, heartTex, currentX + 1, textY, 9, 9, 0x80000000);
+                    // 2. DISEGNA L'ICONA ORIGINALE (Posizione standard)
+                    drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, heartTex, currentX, textY - 1, 9, 9);
                 } else if (!cachedIconItem.isEmpty()) {
                     drawContext.getMatrices().pushMatrix();
                     drawContext.getMatrices().translate((float) currentX, (float) (textY - 1));
