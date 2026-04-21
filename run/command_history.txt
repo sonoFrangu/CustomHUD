@@ -22,3 +22,11 @@
 /gamemode creative
 /gamemode survival
 /gamemode creative
+/gamemode survival
+/time set 50d
+/time set 49d
+/time add 20000
+/time add 100
+/time add 1000
+/time add 100000
+/time set 500d

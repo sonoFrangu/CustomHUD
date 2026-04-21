@@ -12,8 +12,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.GameMode;
 import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.sound.SoundEvents;
 import org.lwjgl.glfw.GLFW;
 
 public class CustomhudClient implements ClientModInitializer {
@@ -25,6 +27,7 @@ public class CustomhudClient implements ClientModInitializer {
 
     private GameMode lastGameMode = null;
     private ItemStack cachedIconItem = ItemStack.EMPTY;
+    private long lastCelebratedDay = -1;
 
     @Override
     public void onInitializeClient() {
@@ -69,15 +72,9 @@ public class CustomhudClient implements ClientModInitializer {
             long minutes = (timeOfDay % 1000L) * 60 / 1000L;
             long days = totalTime / 24000L;
 
-            String timeText = "";
-            if (config.use12HourFormat) {
-                long hours12 = hours24 % 12;
-                if (hours12 == 0) hours12 = 12;
-                String ampm = (hours24 < 12) ? "AM" : "PM";
-                timeText = String.format("%d:%02d %s", hours12, minutes, ampm);
-            } else {
-                timeText = String.format("%02d:%02d", hours24, minutes);
-            }
+            String timeText = config.use12HourFormat
+                    ? String.format("%d:%02d %s", (hours24 % 12 == 0 ? 12 : hours24 % 12), minutes, (hours24 < 12 ? "AM" : "PM"))
+                    : String.format("%02d:%02d", hours24, minutes);
 
             Text dayText = Text.translatable("hud.customhud.day", days);
 
@@ -86,22 +83,7 @@ public class CustomhudClient implements ClientModInitializer {
             int barWidth = 182;
             int barX = (screenWidth - barWidth) / 2;
 
-            int barY;
-            if (config.positionBottom) {
-                int bottomOffset = 45;
-                if (player.isSpectator()) {
-                    bottomOffset = 15;
-                } else if (!player.isCreative()) {
-                    bottomOffset = 55;
-                    if (player.getArmor() > 0 || player.getAir() < player.getMaxAir()) {
-                        bottomOffset = 70;
-                    }
-                }
-                barY = screenHeight - bottomOffset;
-            } else {
-                barY = 25;
-            }
-
+            int barY = config.positionBottom ? screenHeight - (player.isSpectator() ? 15 : (player.isCreative() ? 45 : (player.getArmor() > 0 || player.getAir() < player.getMaxAir() ? 70 : 55))) : 25;
             int textY = barY - 12;
 
             int totalTextWidth = 0;
@@ -112,34 +94,63 @@ public class CustomhudClient implements ClientModInitializer {
             int currentX = (screenWidth - totalTextWidth) / 2;
 
             if (config.showDayCounter) {
-                if (lastGameMode == GameMode.SURVIVAL) {
+                boolean isMilestone = days > 0 && (days == 50 || days == 365 || days % 100 == 0);
+                int textColor = 0xFFFFFFFF;
+
+                if (isMilestone) {
+                    float hue = (System.currentTimeMillis() % 4000L) / 4000f;
+                    textColor = MathHelper.hsvToRgb(hue, 0.7f, 1.0f) | 0xFF000000;
+
+                    if (lastCelebratedDay != days) {
+                        lastCelebratedDay = days;
+                        player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, 0.6f, 1.0f);
+                    }
+                } else if (lastCelebratedDay == days) {
+                    lastCelebratedDay = -1;
+                }
+
+                // RENDERING ICONE E CUORI
+                if (isMilestone && lastGameMode == GameMode.SURVIVAL) {
+                    // Nessuna ombra per gli ItemStack, in pieno stile Vanilla
+                    ItemStack celebIcon = (days >= 500) ? new ItemStack(Items.TOTEM_OF_UNDYING) : new ItemStack(Items.GOLDEN_APPLE);
+                    drawContext.getMatrices().pushMatrix();
+                    drawContext.getMatrices().translate((float) currentX, (float) (textY - 2));
+                    drawContext.getMatrices().scale(0.6f, 0.6f);
+                    drawContext.drawItem(celebIcon, 0, 0);
+                    drawContext.getMatrices().popMatrix();
+
+                } else if (lastGameMode == GameMode.SURVIVAL) {
+                    // L'ombra per il cuore 2D continua a funzionare perfettamente perché supportata nativamente (0x80000000 = nero trasparente)
                     Identifier heartTex = isHardcore ? HARDCORE_HEART_FULL : HEART_FULL;
-                    // 1. DISEGNA L'OMBRA (Spostata di +1, +1 e tinta di nero trasparente 0x80000000)
                     drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, heartTex, currentX + 1, textY, 9, 9, 0x80000000);
-                    // 2. DISEGNA L'ICONA ORIGINALE (Posizione standard)
                     drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, heartTex, currentX, textY - 1, 9, 9);
                 } else if (!cachedIconItem.isEmpty()) {
+                    // Nessuna ombra finta per icone gamemode (Spada/Occhio)
                     drawContext.getMatrices().pushMatrix();
                     drawContext.getMatrices().translate((float) currentX, (float) (textY - 1));
                     drawContext.getMatrices().scale(0.6f, 0.6f);
                     drawContext.drawItem(cachedIconItem, 0, 0);
                     drawContext.getMatrices().popMatrix();
                 }
+
                 currentX += 13;
-                drawContext.drawText(client.textRenderer, dayText, currentX, textY, 0xFFFFFFFF, true);
+                drawContext.drawText(client.textRenderer, dayText, currentX, textY, textColor, true);
                 currentX += client.textRenderer.getWidth(dayText) + 15;
             }
 
+            // Orologio
             if (config.showClock) {
                 drawContext.getMatrices().pushMatrix();
                 drawContext.getMatrices().translate((float) currentX, (float) (textY - 1));
                 drawContext.getMatrices().scale(0.6f, 0.6f);
                 drawContext.drawItem(new ItemStack(Items.CLOCK), 0, 0);
                 drawContext.getMatrices().popMatrix();
+
                 currentX += 13;
                 drawContext.drawText(client.textRenderer, timeText, currentX, textY, 0xFFFFFFFF, true);
             }
 
+            // Bossbar
             if (config.showBossbar) {
                 drawContext.drawGuiTexture(RenderPipelines.GUI_TEXTURED, BOSS_BAR_BACKGROUND, barX, barY, barWidth, 5);
                 long timeSinceMidnight = (timeOfDay + 6000L) % 24000L;
@@ -156,23 +167,14 @@ public class CustomhudClient implements ClientModInitializer {
     }
 
     private float[] getSmoothColor(long ticks) {
-        float[] yellow = {1.0f, 0.9f, 0.2f};
-        float[] blue   = {0.2f, 0.6f, 1.0f};
-        float[] pink   = {1.0f, 0.3f, 0.5f};
-        float[] purple = {0.4f, 0.2f, 0.8f};
-
-        float t;
-        if (ticks < 6000) { t = ticks / 6000f; return lerpColor(purple, yellow, t); }
-        else if (ticks < 12000) { t = (ticks - 6000) / 6000f; return lerpColor(yellow, blue, t); }
-        else if (ticks < 18000) { t = (ticks - 12000) / 6000f; return lerpColor(blue, pink, t); }
-        else { t = (ticks - 18000) / 6000f; return lerpColor(pink, purple, t); }
+        float[] yellow = {1.0f, 0.9f, 0.2f}, blue = {0.2f, 0.6f, 1.0f}, pink = {1.0f, 0.3f, 0.5f}, purple = {0.4f, 0.2f, 0.8f};
+        if (ticks < 6000) return lerpColor(purple, yellow, ticks / 6000f);
+        if (ticks < 12000) return lerpColor(yellow, blue, (ticks - 6000) / 6000f);
+        if (ticks < 18000) return lerpColor(blue, pink, (ticks - 12000) / 6000f);
+        return lerpColor(pink, purple, (ticks - 18000) / 6000f);
     }
 
     private float[] lerpColor(float[] c1, float[] c2, float t) {
-        return new float[]{
-                c1[0] + (c2[0] - c1[0]) * t,
-                c1[1] + (c2[1] - c1[1]) * t,
-                c1[2] + (c2[2] - c1[2]) * t
-        };
+        return new float[]{ c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t, c1[2] + (c2[2] - c1[2]) * t };
     }
 }

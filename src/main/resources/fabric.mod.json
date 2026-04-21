@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "customhud",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "name": "Custom HUD",
   "description": "Aggiunge una bellissima barra temporale e le icone delle modalità di gioco in cima allo schermo!",
   "authors": [
