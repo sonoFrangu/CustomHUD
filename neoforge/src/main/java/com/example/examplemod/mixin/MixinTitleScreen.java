@@ -1,7 +1,7 @@
 package com.example.examplemod.mixin;
 
 import com.example.examplemod.Constants;
-import net.minecraft.client.Minecraft;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.screens.TitleScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,6 +15,6 @@ public class MixinTitleScreen {
     private void init(CallbackInfo info) {
 
         Constants.LOG.info("This line is printed by an example mod mixin from NeoForge!");
-        Constants.LOG.info("MC Version: {}", Minecraft.getInstance().getVersionType());
+        Constants.LOG.info("MC Version: {}", SharedConstants.getCurrentVersion().name());
     }
 }
