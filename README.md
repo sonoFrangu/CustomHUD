@@ -1,32 +1,85 @@
-# MultiLoader Template
+# Custom HUD
 
-This project provides a Gradle project template that can compile Minecraft mods for multiple modloaders using a common project for the sources. This project does not require any third party libraries or dependencies. If you have any questions or want to discuss the project, please join our [Discord](https://discord.myceliummod.network).
+Custom HUD (also known as **Beautiful Day Counter**) is a lightweight, client-side HUD for Minecraft. It shows the current survival day, an in-game clock, and a color-shifting bar that follows the day/night cycle without changing gameplay.
 
-## Getting Started
+![Minecraft](https://img.shields.io/badge/Minecraft-26.1.x-8bc34a?logo=minecraft&logoColor=white)
+![Fabric](https://img.shields.io/badge/Loader-Fabric-DBD0B4?logo=fabric)
+![NeoForge](https://img.shields.io/badge/Loader-NeoForge-E04E39)
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
-### IntelliJ IDEA
-This guide will show how to import the MultiLoader Template into IntelliJ IDEA. The setup process is roughly equivalent to setting up the modloaders independently and should be very familiar to anyone who has worked with their MDKs.
+## Features
 
-1. Clone or download this repository to your computer.
-2. Configure the project by setting the properties in the `gradle.properties` file. You will also need to change the `rootProject.name`  property in `settings.gradle`, this should match the folder name of your project, or else IDEA may complain.
-3. Open the template's root folder as a new project in IDEA. This is the folder that contains this README.md file and the gradlew executable.
-4. If your default JVM/JDK is not Java 25 you will encounter an error when opening the project. This error is fixed by going to `File > Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JVM` and changing the value to a valid Java 25 JVM. You will also need to set the Project SDK to Java 25. This can be done by going to `File > Project Structure > Project SDK`. Once both have been set open the Gradle tab in IDEA and click the refresh button to reload the project.
-5. Open your Run/Debug Configurations. Under the `Application` category there should now be options to run Fabric and NeoForge projects. Select one of the client options and try to run it.
-6. Assuming you were able to run the game in step 5 your workspace should now be set up.
+- Day counter with localized text.
+- 12-hour (AM/PM) or 24-hour clock.
+- Smooth day/night progress bar with animated colors.
+- Top or bottom placement.
+- Independent toggles for the day counter, clock, and day bar.
+- Milestone celebration at days 50, 100, 200, 300, 365, and every 100 days afterwards.
+- Optional level-up sound at a milestone.
+- Configuration screen opened with `H` by default.
+- Optional Mod Menu integration on Fabric.
+- Works on both Fabric and NeoForge from the same source tree.
 
-### Eclipse
-While it is possible to use this template in Eclipse it is not recommended. During the development of this template multiple critical bugs and quirks related to Eclipse were found at nearly every level of the required build tools. While we continue to work with these tools to report and resolve issues support for projects like these are not there yet. For now Eclipse is considered unsupported by this project. The development cycle for build tools is notoriously slow so there are no ETAs available.
+## Compatibility
 
-## Development Guide
-When using this template the majority of your mod should be developed in the `common` project. The `common` project is compiled against the vanilla game and is used to hold code that is shared between the different loader-specific versions of your mod. The `common` project has no knowledge or access to ModLoader specific code, apis, or concepts. Code that requires something from a specific loader must be done through the project that is specific to that loader, such as the `fabric` or `neoforge` projects.
+This branch targets Minecraft **26.1.2 and later 26.1.x releases, up to (but not including) 26.2**.
 
-Loader specific projects such as the `fabric` and `neoforge` project are used to load the `common` project into the game. These projects also define code that is specific to that loader. Loader specific projects can access all the code in the `common` project. It is important to remember that the `common` project can not access code from loader specific projects.
+| Loader | Required |
+| --- | --- |
+| Fabric | Fabric Loader 0.18.6+, Fabric API |
+| NeoForge | NeoForge 26.1.2.7-beta+ |
+| Java | Java 25 |
+| Mod Menu | Optional, Fabric only |
 
-## Removing Platforms and Loaders
-While this template has support for many modloaders, new loaders may appear in the future, and existing loaders may become less relevant.
+Minecraft 26.1 uses official Mojang mappings and the new GUI extraction API. Builds targeting older Minecraft releases need a separate version branch.
 
-Removing loader specific projects is as easy as deleting the folder, and removing the `include("projectname")` line from the `settings.gradle` file.
-For example if you wanted to remove support for `forge` you would follow the following steps:
+## Installation
 
-1. Delete the subproject folder. For example, delete `MultiLoader-Template/forge`.
-2. Remove the project from `settings.gradle`. For example, remove `include("forge")`. 
+1. Install Java 25 and the loader you use.
+2. Install Fabric API when using Fabric.
+3. Download the matching `customhud-*-26.1.2.jar` from Releases.
+4. Drop the JAR into the instance's `mods` folder.
+5. Optionally install Mod Menu to access the configuration screen from the mods list.
+
+The mod is client-side. It does not need to be installed on a dedicated server.
+
+## Configuration
+
+Press `H` in-game, or open the mod's configuration entry in Mod Menu (Fabric).
+
+The configuration is saved as `config/customhud.json` and is written atomically so a crash or interrupted write cannot leave a half-written file.
+
+## Building from source
+
+Use the bundled Gradle wrapper with Java 25:
+
+```bash
+./gradlew build
+```
+
+The loader-specific artifacts are generated in:
+
+- `fabric/build/libs/`
+- `neoforge/build/libs/`
+
+Useful development tasks:
+
+```bash
+./gradlew :fabric:runClient
+./gradlew :neoforge:runClient
+```
+
+## Project layout
+
+- `common/` — HUD logic, configuration, screen, translations, and shared resources.
+- `fabric/` — Fabric entrypoints, key registration, HUD element registration, and Mod Menu integration.
+- `neoforge/` — NeoForge entrypoints, key registration, and GUI events.
+- `build-logic/` — shared Gradle conventions for the multi-loader build.
+
+Forge is not included in this branch because the 26.1 toolchain is maintained by Fabric and NeoForge; the old empty `forge/` directory is intentionally excluded from the build.
+
+## License
+
+Released under the [MIT License](LICENSE).
+
+Created by **SCARABOCCHIO100**. Issues and pull requests are welcome on [GitHub](https://github.com/sonoFrangu/CustomHUD).

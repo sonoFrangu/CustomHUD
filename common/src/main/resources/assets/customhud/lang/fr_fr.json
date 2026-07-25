@@ -1,0 +1,14 @@
+{
+  "hud.customhud.day": "Jour : %s",
+  "screen.customhud.title": "Paramètres de Custom HUD",
+  "screen.customhud.format": "Horloge : %s",
+  "screen.customhud.position": "Position : %s",
+  "screen.customhud.top": "Haut",
+  "screen.customhud.bottom": "Bas",
+  "screen.customhud.days": "Jours : %s",
+  "screen.customhud.clock": "Horloge : %s",
+  "screen.customhud.bossbar": "Barre du jour : %s",
+  "screen.customhud.on": "Activé",
+  "screen.customhud.off": "Désactivé",
+  "key.customhud.open_config": "Ouvrir les paramètres de Custom HUD"
+}

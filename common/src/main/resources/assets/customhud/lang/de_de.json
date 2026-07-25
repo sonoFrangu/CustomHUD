@@ -1,0 +1,14 @@
+{
+  "hud.customhud.day": "Tag: %s",
+  "screen.customhud.title": "Custom-HUD-Einstellungen",
+  "screen.customhud.format": "Uhr: %s",
+  "screen.customhud.position": "Position: %s",
+  "screen.customhud.top": "Oben",
+  "screen.customhud.bottom": "Unten",
+  "screen.customhud.days": "Tage: %s",
+  "screen.customhud.clock": "Uhr: %s",
+  "screen.customhud.bossbar": "Tagesleiste: %s",
+  "screen.customhud.on": "An",
+  "screen.customhud.off": "Aus",
+  "key.customhud.open_config": "Custom-HUD-Einstellungen öffnen"
+}
