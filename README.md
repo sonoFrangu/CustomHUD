@@ -24,14 +24,6 @@ Surviving in Minecraft is an achievement, and your HUD should celebrate it!
 * A satisfying *"Level Up"* sound effect plays exactly at dawn when you unlock a new milestone.
 *(Visual and audio only. No physical items are given).*
 
----
-
-## 📸 Screenshots
-
-*(Add a few pictures here showcasing the HUD at the top, at the bottom, and during a Milestone Celebration!)*
-
-![Top Placement Example](link-to-your-image.png)
-![Milestone Celebration Example](link-to-your-image.png)
 
 ---
 
