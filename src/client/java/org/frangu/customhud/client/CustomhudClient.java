@@ -52,7 +52,7 @@ public class CustomhudClient implements ClientModInitializer {
             }
             Matrix3x2fStack pose = graphics.pose();
             pose.pushMatrix();
-            pose.translate(0.0f, DayHud.BOSS_BAR_SHIFT);
+            pose.translate(0.0f, DayHud.bossBarShift());
             original.render(graphics, deltaTracker);
             pose.popMatrix();
         });
