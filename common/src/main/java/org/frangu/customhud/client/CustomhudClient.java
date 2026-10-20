@@ -50,7 +50,7 @@ public final class CustomhudClient {
     public static void pushBossBarShift(GuiGraphicsExtractor graphics) {
         Matrix3x2fStack pose = graphics.pose();
         pose.pushMatrix();
-        pose.translate(0.0f, DayHud.BOSS_BAR_SHIFT);
+        pose.translate(0.0f, DayHud.bossBarShift());
     }
 
     public static void popBossBarShift(GuiGraphicsExtractor graphics) {
