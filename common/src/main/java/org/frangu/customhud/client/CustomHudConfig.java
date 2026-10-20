@@ -28,6 +28,10 @@ public final class CustomHudConfig {
     private CustomHudConfig() {
     }
 
+    public boolean isHudVisible() {
+        return showDayCounter || showClock || showBossbar;
+    }
+
     public static void load(Path configDirectory) {
         file = configDirectory.resolve(FILE_NAME);
         Path legacyFile = configDirectory.resolve(LEGACY_FILE_NAME);
