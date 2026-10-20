@@ -1,77 +1,76 @@
 package org.frangu.customhud.client;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.layouts.GridLayout;
+import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
+
+import java.util.function.BiConsumer;
 
 public class ConfigScreen extends Screen {
+    private static final int BUTTON_WIDTH = 150;
+
     private final Screen parent;
+    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this);
 
     public ConfigScreen(Screen parent) {
-        super(Text.literal("Beautiful Day Counter - Settings"));
+        super(Component.translatable("customhud.config.title"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
-        int centerX = this.width / 2;
-        int centerY = this.height / 2;
+        CustomHudConfig config = CustomHudConfig.INSTANCE;
+        layout.addTitleHeader(this.title, this.font);
 
-        // RIGA 1: Orologio 12/24h  |  Posizione Sopra/Sotto
-        this.addDrawableChild(ButtonWidget.builder(getFormatText(), button -> {
-            CustomHudConfig.INSTANCE.use12HourFormat = !CustomHudConfig.INSTANCE.use12HourFormat;
-            CustomHudConfig.save();
-            button.setMessage(getFormatText());
-        }).dimensions(centerX - 105, centerY - 45, 100, 20).build());
+        GridLayout grid = new GridLayout().columnSpacing(10).rowSpacing(4);
+        GridLayout.RowHelper rows = grid.createRowHelper(2);
 
-        this.addDrawableChild(ButtonWidget.builder(getPositionText(), button -> {
-            CustomHudConfig.INSTANCE.positionBottom = !CustomHudConfig.INSTANCE.positionBottom;
-            CustomHudConfig.save();
-            button.setMessage(getPositionText());
-        }).dimensions(centerX + 5, centerY - 45, 100, 20).build());
+        rows.addChild(choice("format", "customhud.config.format.12h", "customhud.config.format.24h",
+                config.use12HourFormat, (c, v) -> c.use12HourFormat = v));
+        rows.addChild(choice("position", "customhud.config.position.bottom", "customhud.config.position.top",
+                config.positionBottom, (c, v) -> c.positionBottom = v));
+        rows.addChild(toggle("days", config.showDayCounter, (c, v) -> c.showDayCounter = v));
+        rows.addChild(toggle("clock", config.showClock, (c, v) -> c.showClock = v));
+        rows.addChild(toggle("bossbar", config.showBossbar, (c, v) -> c.showBossbar = v), 2,
+                rows.newCellSettings().alignHorizontallyCenter());
 
-        // RIGA 2: Mostra Giorni  |  Mostra Orologio
-        this.addDrawableChild(ButtonWidget.builder(getDayText(), button -> {
-            CustomHudConfig.INSTANCE.showDayCounter = !CustomHudConfig.INSTANCE.showDayCounter;
-            CustomHudConfig.save();
-            button.setMessage(getDayText());
-        }).dimensions(centerX - 105, centerY - 20, 100, 20).build());
+        layout.addToContents(grid);
+        layout.addToFooter(Button.builder(CommonComponents.GUI_DONE, button -> onClose()).width(200).build());
 
-        this.addDrawableChild(ButtonWidget.builder(getClockText(), button -> {
-            CustomHudConfig.INSTANCE.showClock = !CustomHudConfig.INSTANCE.showClock;
-            CustomHudConfig.save();
-            button.setMessage(getClockText());
-        }).dimensions(centerX + 5, centerY - 20, 100, 20).build());
-
-        // RIGA 3: Mostra Bossbar (Centrato)
-        this.addDrawableChild(ButtonWidget.builder(getBossbarText(), button -> {
-            CustomHudConfig.INSTANCE.showBossbar = !CustomHudConfig.INSTANCE.showBossbar;
-            CustomHudConfig.save();
-            button.setMessage(getBossbarText());
-        }).dimensions(centerX - 50, centerY + 5, 100, 20).build());
-
-        // PULSANTE FATTO
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Done"), button -> {
-            this.client.setScreen(this.parent);
-        }).dimensions(centerX - 100, centerY + 40, 200, 20).build());
+        layout.visitWidgets(this::addRenderableWidget);
+        repositionElements();
     }
 
-    // Metodi per aggiornare il testo dei pulsanti dinamicamente
-    private Text getFormatText() { return Text.literal("Format: " + (CustomHudConfig.INSTANCE.use12HourFormat ? "12h" : "24h")); }
-    private Text getPositionText() { return Text.literal("Pos: " + (CustomHudConfig.INSTANCE.positionBottom ? "Bottom" : "Top")); }
-    private Text getDayText() { return Text.literal("Days: " + (CustomHudConfig.INSTANCE.showDayCounter ? "ON" : "OFF")); }
-    private Text getClockText() { return Text.literal("Clock: " + (CustomHudConfig.INSTANCE.showClock ? "ON" : "OFF")); }
-    private Text getBossbarText() { return Text.literal("Bossbar: " + (CustomHudConfig.INSTANCE.showBossbar ? "ON" : "OFF")); }
+    private CycleButton<Boolean> toggle(String key, boolean value, BiConsumer<CustomHudConfig, Boolean> setter) {
+        return CycleButton.onOffBuilder(value)
+                .withTooltip(v -> Tooltip.create(Component.translatable("customhud.config." + key + ".tooltip")))
+                .create(0, 0, BUTTON_WIDTH, 20, Component.translatable("customhud.config." + key), (b, v) -> apply(setter, v));
+    }
 
-    @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 20, 0xFFFFFF);
+    private CycleButton<Boolean> choice(String key, String trueKey, String falseKey, boolean value,
+                                        BiConsumer<CustomHudConfig, Boolean> setter) {
+        return CycleButton.booleanBuilder(Component.translatable(trueKey), Component.translatable(falseKey), value)
+                .withTooltip(v -> Tooltip.create(Component.translatable("customhud.config." + key + ".tooltip")))
+                .create(0, 0, BUTTON_WIDTH, 20, Component.translatable("customhud.config." + key), (b, v) -> apply(setter, v));
+    }
+
+    private static void apply(BiConsumer<CustomHudConfig, Boolean> setter, boolean value) {
+        setter.accept(CustomHudConfig.INSTANCE, value);
+        CustomHudConfig.save();
     }
 
     @Override
-    public void close() {
-        this.client.setScreen(this.parent);
+    protected void repositionElements() {
+        layout.arrangeElements();
+    }
+
+    @Override
+    public void onClose() {
+        this.minecraft.setScreen(this.parent);
     }
 }

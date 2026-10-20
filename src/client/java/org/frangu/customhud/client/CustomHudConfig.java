@@ -2,41 +2,77 @@ package org.frangu.customhud.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
-public class CustomHudConfig {
-    // Le nostre impostazioni
+public final class CustomHudConfig {
     public boolean use12HourFormat = false;
-    public boolean positionBottom = false; // Falso = In alto, Vero = In basso
+    public boolean positionBottom = false;
     public boolean showDayCounter = true;
     public boolean showClock = true;
     public boolean showBossbar = true;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final File FILE = new File(FabricLoader.getInstance().getConfigDir().toFile(), "beautifulday_config.json");
+    private static final String FILE_NAME = "customhud.json";
+    private static final String LEGACY_FILE_NAME = "beautifulday_config.json";
+
+    private static Path file;
     public static CustomHudConfig INSTANCE = new CustomHudConfig();
 
-    public static void load() {
-        if (FILE.exists()) {
-            try (FileReader reader = new FileReader(FILE)) {
-                INSTANCE = GSON.fromJson(reader, CustomHudConfig.class);
-            } catch (Exception e) {
-                System.out.println("Errore nel caricamento della config!");
-            }
-        } else {
+    private CustomHudConfig() {
+    }
+
+    public boolean isHudVisible() {
+        return showDayCounter || showClock || showBossbar;
+    }
+
+    public static void load(Path configDirectory) {
+        file = configDirectory.resolve(FILE_NAME);
+        Path legacyFile = configDirectory.resolve(LEGACY_FILE_NAME);
+        Path sourceFile = Files.isRegularFile(file) ? file : Files.isRegularFile(legacyFile) ? legacyFile : null;
+
+        if (sourceFile == null) {
             save();
+            return;
+        }
+
+        try (Reader reader = Files.newBufferedReader(sourceFile, StandardCharsets.UTF_8)) {
+            CustomHudConfig loaded = GSON.fromJson(reader, CustomHudConfig.class);
+            INSTANCE = loaded != null ? loaded : new CustomHudConfig();
+            if (sourceFile.equals(legacyFile)) {
+                save();
+            }
+        } catch (Exception exception) {
+            INSTANCE = new CustomHudConfig();
+            System.err.println("[CustomHUD] Unable to load configuration: " + exception.getMessage());
         }
     }
 
     public static void save() {
-        try (FileWriter writer = new FileWriter(FILE)) {
-            GSON.toJson(INSTANCE, writer);
-        } catch (Exception e) {
-            System.out.println("Errore nel salvataggio della config!");
+        if (file == null) {
+            return;
+        }
+
+        Path temporaryFile = file.resolveSibling(FILE_NAME + ".tmp");
+        try {
+            Files.createDirectories(file.getParent());
+            try (Writer writer = Files.newBufferedWriter(temporaryFile, StandardCharsets.UTF_8)) {
+                GSON.toJson(INSTANCE, writer);
+            }
+
+            try {
+                Files.move(temporaryFile, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(temporaryFile, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (Exception exception) {
+            System.err.println("[CustomHUD] Unable to save configuration: " + exception.getMessage());
         }
     }
 }

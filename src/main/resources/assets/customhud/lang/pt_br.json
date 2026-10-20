@@ -1,3 +1,19 @@
 {
-  "hud.customhud.day": "Dia: %s"
+  "hud.customhud.day": "Dia: %s",
+  "key.customhud.open_config": "Abrir configurações do Beautiful Day Counter",
+  "customhud.config.title": "Beautiful Day Counter",
+  "customhud.config.days": "Contador de dias",
+  "customhud.config.days.tooltip": "Mostra o dia atual com o ícone do modo de jogo.",
+  "customhud.config.clock": "Relógio",
+  "customhud.config.clock.tooltip": "Mostra o horário do jogo.",
+  "customhud.config.bossbar": "Barra dia/noite",
+  "customhud.config.bossbar.tooltip": "Mostra uma barra colorida que acompanha o ciclo dia/noite.",
+  "customhud.config.format": "Formato de hora",
+  "customhud.config.format.tooltip": "Usa o formato de 12 horas (AM/PM) ou 24 horas.",
+  "customhud.config.format.12h": "12h",
+  "customhud.config.format.24h": "24h",
+  "customhud.config.position": "Posição",
+  "customhud.config.position.tooltip": "Coloca o HUD no topo ou acima da hotbar.",
+  "customhud.config.position.top": "Topo",
+  "customhud.config.position.bottom": "Embaixo"
 }

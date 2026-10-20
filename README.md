@@ -1,7 +1,7 @@
 # 🌅 Beautiful Day Counter (CustomHUD)
 
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-orange.svg)](https://fabricmc.net/)
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.21%20%7C%2026.1.x-brightgreen.svg)]()
+[![Minecraft](https://img.shields.io/badge/Minecraft-26.3-brightgreen.svg)]()
 [![Environment](https://img.shields.io/badge/Environment-Client--Side-blue.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
@@ -29,12 +29,12 @@ Surviving in Minecraft is an achievement, and your HUD should celebrate it!
 
 ## 🛠️ Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) (Version 0.16.0 or higher).
+1. Install [Fabric Loader](https://fabricmc.net/use/installer/) (Version 0.19.5 or higher).
 2. Download and drop the [Fabric API](https://modrinth.com/mod/fabric-api) into your `mods` folder.
 3. *(Highly Recommended)* Download and drop [ModMenu](https://modrinth.com/mod/modmenu) into your `mods` folder.
 4. Download the latest release of **Beautiful Day Counter** and place it in your `mods` folder.
 
-**Compatibility:** Requires Minecraft **1.21 or higher**. Forward-compatible with future updates (up to 26.1.x) thanks to modern rendering implementations!
+**Compatibility:** Requires Minecraft **26.3** and Java **25**. Older versions (1.21.x) are available in previous releases.
 
 ---
 
