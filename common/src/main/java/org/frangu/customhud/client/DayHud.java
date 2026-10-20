@@ -43,8 +43,12 @@ public final class DayHud {
      */
     public static IntSupplier statusBarHeight = () -> 0;
 
-    // Colori della barra (RGB) nei quattro momenti chiave: mezzanotte, alba, mezzogiorno, tramonto
-    private static final int PURPLE = 0x6633CC, YELLOW = 0xFFE633, BLUE = 0x3399FF, PINK = 0xFF4D80;
+    /**
+     * Colori della barra (RGB) per tick da mezzanotte. Le tappe intermedie (aurora, sole del mattino)
+     * evitano che l'interpolazione RGB passi per toni grigi o marroni.
+     */
+    private static final long[] COLOR_TICKS = {0, 4500, 6000, 7500, 12000, 18000, 24000};
+    private static final int[] COLORS = {0x6633CC, 0xFF7A4D, 0xFFE633, 0xFFF5C0, 0x3399FF, 0xFF4D80, 0x6633CC};
 
     // Creati al primo frame: i componenti degli item non sono pronti durante l'inizializzazione della mod
     private ItemStack clockIcon, creativeIcon, adventureIcon, spectatorIcon, goldenAppleIcon, totemIcon;
@@ -69,6 +73,8 @@ public final class DayHud {
         ClientLevel level = mc.level;
         if (player == null || level == null || mc.gameMode == null) return;
         if (mc.gui.hud.isHidden() || mc.getDebugOverlay().showDebugScreen()) return;
+        // Nel menu delle impostazioni l'HUD finirebbe sopra al titolo
+        if (mc.gui.screen() instanceof ConfigScreen) return;
 
         CustomHudConfig config = CustomHudConfig.INSTANCE;
         if (!config.isHudVisible()) return;
@@ -219,10 +225,10 @@ public final class DayHud {
     }
 
     private static int smoothColor(long ticks) {
-        if (ticks < 6000) return lerpRgb(PURPLE, YELLOW, ticks / 6000f);
-        if (ticks < 12000) return lerpRgb(YELLOW, BLUE, (ticks - 6000) / 6000f);
-        if (ticks < 18000) return lerpRgb(BLUE, PINK, (ticks - 12000) / 6000f);
-        return lerpRgb(PINK, PURPLE, (ticks - 18000) / 6000f);
+        int i = 1;
+        while (i < COLOR_TICKS.length - 1 && ticks >= COLOR_TICKS[i]) i++;
+        float t = (float) (ticks - COLOR_TICKS[i - 1]) / (COLOR_TICKS[i] - COLOR_TICKS[i - 1]);
+        return lerpRgb(COLORS[i - 1], COLORS[i], t);
     }
 
     private static int lerpRgb(int a, int b, float t) {
