@@ -1,0 +1,92 @@
+# Compila tutte le versioni (un branch per versione di Minecraft) e,
+# quando si pusha un tag "v*", crea una Release su GitHub con tutti i jar.
+#
+#   git tag v1.6.0 && git push origin v1.6.0
+#
+# Lanciandolo a mano da "Actions" compila soltanto e lascia i jar come artifact.
+name: Build & Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.branch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { branch: "1.21.11", java: "21" }
+          - { branch: "26.1.2", java: "25" }
+          - { branch: "26.2", java: "25" }
+          - { branch: "26.3", java: "25" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Check version matches tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          expected="${GITHUB_REF_NAME#v}"
+          actual=$(grep -E '^(mod_)?version=' gradle.properties | head -1 | cut -d= -f2)
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::Branch ${{ matrix.branch }} has version $actual, tag is $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon
+
+      - name: Collect jars
+        run: |
+          mkdir dist
+          if [ -f build.gradle ] && [ ! -d fabric ]; then
+            # Progetto Fabric singolo (1.21.11): un solo jar, rinominato come gli altri
+            version=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2)
+            cp build/libs/customhud-"$version".jar dist/customhud-fabric-${{ matrix.branch }}-"$version".jar
+          else
+            for loader in fabric neoforge forge; do
+              [ -d "$loader/build/libs" ] || continue
+              find "$loader/build/libs" -name "customhud-$loader-*.jar" ! -name '*-sources.jar' ! -name '*-javadoc.jar' -exec cp {} dist/ \;
+            done
+          fi
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jars-${{ matrix.branch }}
+          path: dist/*.jar
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: jars-*
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.jar
+          generate_release_notes: true
