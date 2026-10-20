@@ -1,0 +1,45 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.minecraftforge.gradle'
+}
+
+minecraft {
+    runs {
+        configureEach {
+            workingDir = layout.projectDirectory.dir('runs/client')
+            systemProperty 'eventbus.api.strictRuntimeChecks', 'true'
+        }
+        register('client')
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${forge_version}")
+    annotationProcessor 'net.minecraftforge:eventbus-validator:7.0.6'
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'forge')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant ->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'forge')
+            }
+        }
+    }
+}
