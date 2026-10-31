@@ -1,0 +1,14 @@
+name: Horizon port
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.95.0 --profile minimal
+      - run: cargo test --workspace --locked

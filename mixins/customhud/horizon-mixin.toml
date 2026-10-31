@@ -1,0 +1,121 @@
+[mod]
+id = "customhud"
+version = "1.6.0"
+priority = 100
+
+[compatibility]
+horizon_revision = "ba6344a59cb9e755b730dcf02285fc0d33b97d3c"
+
+# La logica (configurazione, testi, HUD, schermata) diventa `crate::game::customhud`.
+[[module]]
+id = "runtime"
+file = "crates/horizon-client/src/game.rs"
+name = "customhud"
+source = "runtime.rs"
+
+# Il lato gioco (disegno e input) diventa `crate::game::customhud_screen`.
+[[module]]
+id = "screen"
+file = "crates/horizon-client/src/game.rs"
+name = "customhud_screen"
+source = "screen.rs"
+
+# Disegna contatore, orologio e barra nell'HUD.
+[[injection]]
+id = "hud"
+target = "horizon_client::game::native_hooks::Game<'_>::native_hud"
+kind = "HEAD"
+helper = "hud.rs"
+bindings = [
+    { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+    { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+]
+
+# Il tasto (H di default) apre le impostazioni della mod.
+[[injection]]
+id = "key"
+target = "horizon_client::game::native_hooks::Game<'_>::native_key"
+kind = "HEAD"
+helper = "key.rs"
+bindings = [
+    { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+    { name = "key", ty = "&str", value = "key" },
+    { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+# La voce in Options > Mods, con il tasto configurabile.
+[[injection]]
+id = "mods"
+target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
+kind = "HEAD"
+helper = "mods.rs"
+bindings = [
+    { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+    { name = "mods", ty = "&mut Vec<NativeMod>", value = "&mut *mods" },
+]
+
+# La pagina della mod in Options > Mods: un pulsante che apre la schermata.
+[[injection]]
+id = "settings"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings"
+kind = "HEAD"
+helper = "settings.rs"
+bindings = [
+    { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+    { name = "mod_id", ty = "&str", value = "mod_id" },
+    { name = "buttons", ty = "&mut Vec<String>", value = "&mut *buttons" },
+]
+
+[[injection]]
+id = "settings-click"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings_click"
+kind = "HEAD"
+helper = "settings_click.rs"
+bindings = [
+    { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+    { name = "mod_id", ty = "&str", value = "mod_id" },
+    { name = "button", ty = "usize", value = "button" },
+]
+
+# La schermata delle impostazioni prende il posto di `Screen::DialogWarning`
+# quando è aperta: disegno e input della finestra.
+[[injection]]
+id = "screen-draw"
+target = "horizon_client::game::server_links::Game<'_>::draw_dialog_warning"
+kind = "HEAD"
+cancellable = true
+helper = "dialog.rs"
+bindings = [
+    { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+    { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+]
+
+[[injection]]
+id = "screen-input"
+target = "horizon_client::game::<Game<'_> as ApplicationHandler>::window_event"
+kind = "HEAD"
+cancellable = true
+helper = "input.rs"
+bindings = [
+    { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+    { name = "event", ty = "&winit::event::WindowEvent", value = "&event" },
+]
+
+# Le bossbar vanilla scendono sotto l'HUD quando è in alto: si ricorda dove
+# iniziano i loro vertici e li si sposta prima di minimappa e HUD delle mod.
+[[injection]]
+id = "boss-bars"
+target = "horizon_client::game::dragon::Game<'_>::draw_boss_bars"
+kind = "HEAD"
+helper = "boss_bars.rs"
+bindings = [{ name = "batch", ty = "&horizon_client::hud::HudBatch", value = "&*batch" }]
+
+[[injection]]
+id = "extras"
+target = "horizon_client::game::extras::Game<'_>::draw_extras"
+kind = "HEAD"
+helper = "extras.rs"
+bindings = [
+    { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+    { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+]

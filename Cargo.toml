@@ -1,0 +1,15 @@
+[package]
+name = "customhud-horizon"
+version = "1.6.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+description = "Beautiful Day Counter (Custom HUD) as a native Horizon mod"
+
+[lib]
+# This exact source is also injected as a same-crate module by horizon-mixins.
+path = "mixins/customhud/runtime.rs"
+
+[workspace]
+members = ["tools/audit"]
+resolver = "2"
