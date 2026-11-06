@@ -62,13 +62,25 @@ pub(super) fn draw_hud(game: &mut Game<'_>, batch: &mut HudBatch) {
     if !game.native_corner_shown(horizon_client::extras::Corner::TopLeft) {
         return;
     }
+    let overworld = player.dimension == "minecraft:overworld";
     let config = hud::with_state(|| load(game), |s| s.config.clone());
-    let now = millis();
-    let frame = hud::Frame {
+    let frame = frame(game, batch, overworld);
+    let Some(out) = hud::layout(&config, &frame, &|t: &str| text_width(game, t)) else {
+        return;
+    };
+    let play_sound = out.milestone && config.milestone_sound;
+    if hud::with_state(|| None, |s| s.celebration_sound(out.days, frame.millis, play_sound)) {
+        game.audio.play(hud::LEVEL_UP_SOUND, None, 0.6, 1.0);
+    }
+    draw_out(game, batch, &out);
+}
+
+fn frame(game: &Game<'_>, batch: &HudBatch, overworld: bool) -> hud::Frame {
+    hud::Frame {
         day_time: game.world.day_time,
         width: batch.width as i32,
         height: batch.height as i32,
-        overworld: player.dimension == "minecraft:overworld",
+        overworld,
         thundering: game.world.weather.levels(1.0).1 > 0.9,
         mode: match game.mode {
             GameMode::Survival => hud::Mode::Survival,
@@ -79,17 +91,13 @@ pub(super) fn draw_hud(game: &mut Game<'_>, batch: &mut HudBatch) {
         hardcore: game.level.hardcore,
         low_air: game.player.as_ref().is_some_and(|p| p.air < 300),
         status_bar_height: game.health_hud.left_height.max(game.health_hud.right_height),
-        millis: now,
+        millis: millis(),
         lang: lang(game),
-    };
-    let Some(out) = hud::layout(&config, &frame, &|t: &str| text_width(game, t)) else {
-        return;
-    };
-    let play_sound = out.milestone && config.milestone_sound;
-    if hud::with_state(|| None, |s| s.celebration_sound(out.days, now, play_sound)) {
-        game.audio.play(hud::LEVEL_UP_SOUND, None, 0.6, 1.0);
     }
+}
 
+// Disegna nel batch il risultato di `hud::layout`.
+fn draw_out(game: &mut Game<'_>, batch: &mut HudBatch, out: &hud::Hud) {
     let start = batch.vertices.len();
     for draw in &out.draws {
         match *draw {
@@ -150,6 +158,8 @@ fn screen_open(game: &Game<'_>) -> bool {
         hud::with_state(|| None, |s| {
             s.screen.open = false;
             s.screen.drag = None;
+            s.screen.placing = false;
+            s.screen.grab = None;
         });
         return false;
     }
@@ -162,6 +172,8 @@ pub(super) fn open_screen(game: &mut Game<'_>, parent: hud::Parent) {
         s.screen.open = true;
         s.screen.parent = parent;
         s.screen.drag = None;
+        s.screen.placing = false;
+        s.screen.grab = None;
     });
     // I tasti di gioco non devono restare premuti dietro la schermata
     game.keys.clear();
@@ -174,6 +186,8 @@ fn close_screen(game: &mut Game<'_>) {
     let (config, parent) = hud::with_state(|| None, |s| {
         s.screen.open = false;
         s.screen.drag = None;
+        s.screen.placing = false;
+        s.screen.grab = None;
         (s.config.clone(), s.screen.parent)
     });
     save(game, &config);
@@ -200,12 +214,16 @@ pub(super) fn draw_screen(game: &mut Game<'_>, batch: &mut HudBatch) -> ControlF
     if !screen_open(game) {
         return ControlFlow::Continue(());
     }
+    if hud::with_state(|| None, |s| s.screen.placing) {
+        draw_placing(game, batch);
+        return ControlFlow::Break(());
+    }
     let (w, h) = (batch.width as i32, batch.height as i32);
     let cursor = game.cursor;
     let lang = lang(game);
     let vanilla = vanilla(game);
     let (widgets, config, section, drag) = hud::with_state(|| None, |s| {
-        let widgets = hud::screen_layout(s.screen.section, w, h);
+        let widgets = hud::screen_layout(s.screen.section, &s.config, w, h);
         s.screen_drag(&widgets, cursor);
         (widgets, s.config.clone(), s.screen.section, s.screen.drag)
     });
@@ -236,7 +254,19 @@ pub(super) fn draw_screen(game: &mut Game<'_>, batch: &mut HudBatch) -> ControlF
                 if opt.slider().is_some() {
                     let fraction = dragged.unwrap_or_else(|| opt.slider_fraction(&config));
                     let active = hover || dragged.is_some();
-                    ui::slider(batch, atlas, x, y, ww, &label, fraction as f32, active, true);
+                    let dragging = dragged.is_some();
+                    ui::slider(
+                        batch,
+                        atlas,
+                        x,
+                        y,
+                        ww,
+                        &label,
+                        fraction as f32,
+                        active,
+                        true,
+                        dragging,
+                    );
                 } else {
                     ui::button(batch, atlas, x, y, ww, wh, &label, true, hover);
                 }
@@ -266,12 +296,135 @@ pub(super) fn draw_screen(game: &mut Game<'_>, batch: &mut HudBatch) -> ControlF
     ControlFlow::Break(())
 }
 
+// ---- Spostamento col mouse del contatore semplice ----
+
+// Il riquadro del contatore com'è adesso, in pixel GUI.
+fn simple_box(game: &Game<'_>, config: &hud::Config, w: i32, h: i32) -> hud::SimpleBox {
+    let days = game.world.day_time.div_euclid(24000);
+    let day = hud::day_text(days, lang(game));
+    hud::simple_box(config, w, h, text_width(game, &day))
+}
+
+// Il mondo resta visibile (sfocato) con sopra il contatore vero, un bordo che
+// mostra dove afferrarlo, una riga di aiuto e Fatto.
+fn draw_placing(game: &mut Game<'_>, batch: &mut HudBatch) {
+    let (w, h) = (batch.width as i32, batch.height as i32);
+    let cursor = game.cursor;
+    let config = hud::with_state(|| None, |s| {
+        let b = simple_box(game, &s.config, w, h);
+        s.place_drag(&b, cursor, w, h);
+        s.config.clone()
+    });
+    let grabbed = hud::with_state(|| None, |s| s.screen.grab.is_some());
+
+    let atlas = &game.gui.atlas;
+    let hint = hud::tr("customhud.place.hint", lang(game)).to_owned();
+    let lines = hud::wrap(&hint, (w - 40).min(300), &|t: &str| text_width(game, t));
+    let top = (h - lines.len() as i32 * 10) / 2;
+    for (i, line) in lines.iter().enumerate() {
+        let x = (w - text_width(game, line)) / 2;
+        let y = top + i as i32 * 10;
+        batch.text_styled(atlas, &Text::literal(line), x as f32, y as f32, color(0xFFAAAAAA), true);
+    }
+    let done = hud::place_done(w, h);
+    let label = Text::literal(&vanilla(game).done);
+    let (dx, dy, dw, dh) = (done.x as f32, done.y as f32, done.w as f32, done.h as f32);
+    ui::button(batch, atlas, dx, dy, dw, dh, &label, true, done.contains(cursor));
+
+    let frame = frame(game, batch, true);
+    let out = hud::layout(&config, &frame, &|t: &str| text_width(game, t));
+    if let Some(out) = out {
+        draw_out(game, batch, &out);
+    }
+    // Bordo di 1 pixel attorno al riquadro: bianco se afferrato o sotto il mouse
+    let b = simple_box(game, &config, w, h);
+    let lit = grabbed || b.contains(cursor);
+    let edge = color(if lit { 0xFFFFFFFF } else { 0x80FFFFFF });
+    let (x0, y0) = (b.x as f32 - 1.0, b.y as f32 - 1.0);
+    let (bw, bh) = (b.w as f32 * b.scale + 2.0, b.h as f32 * b.scale + 2.0);
+    let atlas = &game.gui.atlas;
+    batch.fill(atlas, x0, y0, bw, 1.0, edge);
+    batch.fill(atlas, x0, y0 + bh - 1.0, bw, 1.0, edge);
+    batch.fill(atlas, x0, y0 + 1.0, 1.0, bh - 2.0, edge);
+    batch.fill(atlas, x0 + bw - 1.0, y0 + 1.0, 1.0, bh - 2.0, edge);
+}
+
+// Clic sul contatore per afferrarlo, su Fatto per tornare; frecce per i ritocchi;
+// Esc torna alle impostazioni.
+fn handle_placing(game: &mut Game<'_>, event: &WindowEvent) -> ControlFlow<()> {
+    let (w, h) = game.gui_size();
+    let (w, h) = (w as i32, h as i32);
+    let cursor = game.cursor;
+    let mut save_now = false;
+    let mut back = false;
+    match event {
+        WindowEvent::CursorMoved { .. } => return ControlFlow::Continue(()),
+        WindowEvent::MouseInput { state, button, .. } => {
+            if *button != MouseButton::Left {
+                return ControlFlow::Break(());
+            }
+            if *state == ElementState::Pressed {
+                let config = hud::with_state(|| None, |s| s.config.clone());
+                let b = simple_box(game, &config, w, h);
+                let grabbed = hud::with_state(|| None, |s| s.place_press(&b, cursor));
+                if !grabbed && hud::place_done(w, h).contains(cursor) {
+                    game.audio.play(hud::CLICK_SOUND, None, 0.25, 1.0);
+                    back = true;
+                }
+            } else {
+                save_now = hud::with_state(|| None, |s| s.place_release());
+            }
+        }
+        WindowEvent::KeyboardInput { event: key, .. } => {
+            let PhysicalKey::Code(code) = key.physical_key else {
+                return ControlFlow::Break(());
+            };
+            let name = horizon_client::keybinds::key_name(code);
+            let window_key = name == Some(game.settings.keys.get("key.screenshot"))
+                || name == Some(game.settings.keys.get("key.fullscreen"));
+            if window_key {
+                return ControlFlow::Continue(());
+            }
+            if key.state != ElementState::Pressed {
+                return ControlFlow::Break(());
+            }
+            let nudge = match code {
+                KeyCode::ArrowLeft => Some((-1, 0)),
+                KeyCode::ArrowRight => Some((1, 0)),
+                KeyCode::ArrowUp => Some((0, -1)),
+                KeyCode::ArrowDown => Some((0, 1)),
+                _ => None,
+            };
+            if let Some((dx, dy)) = nudge {
+                hud::with_state(|| None, |s| s.place_nudge(dx, dy));
+                save_now = true;
+            } else if code == KeyCode::Escape {
+                back = true;
+            }
+        }
+        WindowEvent::MouseWheel { .. } => {}
+        _ => return ControlFlow::Continue(()),
+    }
+    if back {
+        hud::with_state(|| None, |s| s.place_close());
+        save_now = true;
+    }
+    if save_now {
+        let config = hud::with_state(|| None, |s| s.config.clone());
+        save(game, &config);
+    }
+    ControlFlow::Break(())
+}
+
 // L'input della finestra mentre la schermata è aperta: clic, trascinamento,
 // rotellina ed Esc vanno alla schermata; il movimento del mouse, gli screenshot
 // e lo schermo intero restano al gioco.
 pub(super) fn handle_event(game: &mut Game<'_>, event: &WindowEvent) -> ControlFlow<()> {
     if !screen_open(game) {
         return ControlFlow::Continue(());
+    }
+    if hud::with_state(|| None, |s| s.screen.placing) {
+        return handle_placing(game, event);
     }
     let (w, h) = game.gui_size();
     let cursor = game.cursor;
@@ -284,7 +437,7 @@ pub(super) fn handle_event(game: &mut Game<'_>, event: &WindowEvent) -> ControlF
             }
             hud::with_state(|| None, |s| {
                 if *state == ElementState::Pressed {
-                    let widgets = hud::screen_layout(s.screen.section, w as i32, h as i32);
+                    let widgets = hud::screen_layout(s.screen.section, &s.config, w as i32, h as i32);
                     s.screen_click(&widgets, cursor, shift)
                 } else {
                     s.screen_release()
@@ -300,7 +453,7 @@ pub(super) fn handle_event(game: &mut Game<'_>, event: &WindowEvent) -> ControlF
                 return ControlFlow::Break(());
             }
             hud::with_state(|| None, |s| {
-                let widgets = hud::screen_layout(s.screen.section, w as i32, h as i32);
+                let widgets = hud::screen_layout(s.screen.section, &s.config, w as i32, h as i32);
                 s.screen_scroll(&widgets, cursor, dy > 0.0)
             })
         }

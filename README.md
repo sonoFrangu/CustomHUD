@@ -19,6 +19,8 @@ sprite vanilla e stesse icone.
 - Le bossbar vanilla scendono sotto l'HUD quando è in alto.
 - Nether ed End: ora dell'Overworld, `??:??` oppure nascosti.
 - Testi in inglese, italiano, tedesco, spagnolo, francese e portoghese.
+- Modalità semplice: solo "Giorno: N", dove vuoi sullo schermo (Posizione X/Y in
+  percentuale, oppure trascinato col mouse con "Sposta col mouse", frecce per i ritocchi).
 - Tasto **H** (modificabile in Options > Mods) per aprire le impostazioni.
 
 La schermata delle impostazioni è la `ConfigScreen` Java: titolo, schede Elementi /
@@ -70,7 +72,7 @@ Linux e Python 3.12.
 
 ## Pubblicare
 
-`python3 tools/package.py` crea `target/customhud-1.6.0.hnmod`, da pubblicare come
+`python3 tools/package.py` crea `target/customhud-1.7.0.hnmod`, da pubblicare come
 release GitHub e inviare al registro
 [horizon-mods](https://github.com/horizon-rust/horizon-mods) come `native-mod`.
 

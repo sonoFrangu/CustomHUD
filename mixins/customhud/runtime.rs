@@ -10,7 +10,7 @@
 use std::sync::Mutex;
 
 pub const MOD_ID: &str = "customhud";
-pub const TITLE: &str = "Beautiful Day Counter 1.6.0";
+pub const TITLE: &str = "Beautiful Day Counter 1.7.0";
 pub const SETTING_KEY: &str = "config";
 pub const CONFIG_KEY: &str = "open_config";
 pub const CONFIG_KEY_DEFAULT: &str = "key.keyboard.h";
@@ -300,6 +300,50 @@ const TRANSLATIONS: &[(&str, Tr)] = &[
         "Joue un son quand un jour d'étape commence.",
         "Toca um som quando começa um dia marco.",
     ]),
+    ("customhud.config.simple", ["Simple mode", "Modalità semplice", "Einfacher Modus", "Modo simple", "Mode simple", "Modo simples"]),
+    ("customhud.config.simple.tooltip", [
+        "Show only \"Day: N\", anywhere on the screen. Choose where in Behavior.",
+        "Mostra solo \"Giorno: N\", dove vuoi sullo schermo. Scegli dove in Comportamento.",
+        "Zeigt nur \"Tag: N\", überall auf dem Bildschirm. Wo, legst du unter Verhalten fest.",
+        "Muestra solo \"Día: N\", donde quieras en la pantalla. Elige dónde en Comportamiento.",
+        "Affiche seulement « Jour : N », où tu veux à l'écran. Choisis où dans Comportement.",
+        "Mostra só \"Dia: N\", onde quiser na tela. Escolha onde em Comportamento.",
+    ]),
+    ("customhud.config.simple_x", ["Position X", "Posizione X", "Position X", "Posición X", "Position X", "Posição X"]),
+    ("customhud.config.simple_x.tooltip", [
+        "Where the counter goes across the screen: 0% left edge, 100% right edge.",
+        "Dove va il contatore in orizzontale: 0% bordo sinistro, 100% bordo destro.",
+        "Wo der Zähler waagerecht steht: 0% linker Rand, 100% rechter Rand.",
+        "Dónde va el contador en horizontal: 0% borde izquierdo, 100% borde derecho.",
+        "Où va le compteur à l'horizontale : 0% bord gauche, 100% bord droit.",
+        "Onde fica o contador na horizontal: 0% borda esquerda, 100% borda direita.",
+    ]),
+    ("customhud.config.simple_y", ["Position Y", "Posizione Y", "Position Y", "Posición Y", "Position Y", "Posição Y"]),
+    ("customhud.config.simple_y.tooltip", [
+        "Where the counter goes up and down: 0% top edge, 100% bottom edge.",
+        "Dove va il contatore in verticale: 0% bordo in alto, 100% bordo in basso.",
+        "Wo der Zähler senkrecht steht: 0% oberer Rand, 100% unterer Rand.",
+        "Dónde va el contador en vertical: 0% borde superior, 100% borde inferior.",
+        "Où va le compteur à la verticale : 0% bord haut, 100% bord bas.",
+        "Onde fica o contador na vertical: 0% borda superior, 100% borda inferior.",
+    ]),
+    ("customhud.config.place", ["Move with mouse", "Sposta col mouse", "Mit der Maus bewegen", "Mover con el ratón", "Déplacer à la souris", "Mover com o mouse"]),
+    ("customhud.config.place.tooltip", [
+        "Drag the counter wherever you want on the screen.",
+        "Trascina il contatore dove vuoi sullo schermo.",
+        "Zieh den Zähler an eine beliebige Stelle auf dem Bildschirm.",
+        "Arrastra el contador a donde quieras en la pantalla.",
+        "Fais glisser le compteur où tu veux à l'écran.",
+        "Arraste o contador para onde quiser na tela.",
+    ]),
+    ("customhud.place.hint", [
+        "Drag the counter with the mouse. Arrow keys move it a little. Esc or Done to go back.",
+        "Trascina il contatore col mouse. Le frecce lo spostano di poco. Esc o Fatto per tornare.",
+        "Zieh den Zähler mit der Maus. Pfeiltasten verschieben ihn ein wenig. Esc oder Fertig zum Zurückkehren.",
+        "Arrastra el contador con el ratón. Las flechas lo mueven un poco. Esc o Listo para volver.",
+        "Fais glisser le compteur à la souris. Les flèches le déplacent un peu. Échap ou Terminé pour revenir.",
+        "Arraste o contador com o mouse. As setas o movem um pouco. Esc ou Concluído para voltar.",
+    ]),
     ("customhud.config.reset", ["Reset defaults", "Ripristina predefiniti", "Standard wiederherstellen", "Restablecer", "Réinitialiser", "Restaurar padrão"]),
     ("customhud.mod.description", [
         "Day counter, clock and day/night bar.",
@@ -368,6 +412,11 @@ pub struct Config {
     pub other_dimensions: OtherDimensions,
     pub milestones: bool,
     pub milestone_sound: bool,
+    // Modalità semplice: solo "Giorno: N", in un punto qualsiasi dello schermo
+    // (percentuale dello spazio libero, da sinistra e dall'alto).
+    pub simple_mode: bool,
+    pub simple_x: i32,
+    pub simple_y: i32,
 }
 
 impl Default for Config {
@@ -391,13 +440,16 @@ impl Default for Config {
             other_dimensions: OtherDimensions::Show,
             milestones: true,
             milestone_sound: true,
+            simple_mode: false,
+            simple_x: 0,
+            simple_y: 0,
         }
     }
 }
 
 impl Config {
     pub fn is_hud_visible(&self) -> bool {
-        self.show_day_counter || self.show_clock || self.show_bossbar
+        self.simple_mode || self.show_day_counter || self.show_clock || self.show_bossbar
     }
 
     // Riporta nei limiti i valori modificati a mano nel file.
@@ -406,6 +458,8 @@ impl Config {
         self.opacity = self.opacity.clamp(MIN_OPACITY, MAX_OPACITY);
         self.offset_x = self.offset_x.clamp(-MAX_OFFSET, MAX_OFFSET);
         self.offset_y = self.offset_y.clamp(-MAX_OFFSET, MAX_OFFSET);
+        self.simple_x = self.simple_x.clamp(0, 100);
+        self.simple_y = self.simple_y.clamp(0, 100);
     }
 
     // Una riga `chiave=valore` per opzione, con i nomi dei campi di `customhud.json`.
@@ -432,10 +486,13 @@ impl Config {
                 "positionBottom" => c.position_bottom = flag,
                 "milestones" => c.milestones = flag,
                 "milestoneSound" => c.milestone_sound = flag,
+                "simpleMode" => c.simple_mode = flag,
                 "scale" => c.scale = number.unwrap_or(c.scale),
                 "opacity" => c.opacity = number.unwrap_or(c.opacity),
                 "offsetX" => c.offset_x = number.unwrap_or(c.offset_x),
                 "offsetY" => c.offset_y = number.unwrap_or(c.offset_y),
+                "simpleX" => c.simple_x = number.unwrap_or(c.simple_x),
+                "simpleY" => c.simple_y = number.unwrap_or(c.simple_y),
                 "barTheme" => {
                     c.bar_theme = match value {
                         "PASTEL" => BarTheme::Pastel,
@@ -489,6 +546,9 @@ impl Config {
             format!("otherDimensions={dims}"),
             format!("milestones={}", self.milestones),
             format!("milestoneSound={}", self.milestone_sound),
+            format!("simpleMode={}", self.simple_mode),
+            format!("simpleX={}", self.simple_x),
+            format!("simpleY={}", self.simple_y),
         ];
         lines.join("\n") + "\n"
     }
@@ -525,7 +585,22 @@ impl Section {
         }
     }
 
-    fn options(self) -> &'static [Opt] {
+    // In modalità semplice restano solo le opzioni che contano per "Giorno: N",
+    // e la posizione libera prende il posto di Posizione e spostamenti.
+    fn options(self, c: &Config) -> &'static [Opt] {
+        if c.simple_mode {
+            return match self {
+                Section::Elements => &[Opt::Simple],
+                Section::Look => &[Opt::Scale, Opt::Opacity, Opt::Background],
+                Section::Behavior => &[
+                    Opt::SimpleX,
+                    Opt::SimpleY,
+                    Opt::Milestones,
+                    Opt::MilestoneSound,
+                    Opt::Place,
+                ],
+            };
+        }
         match self {
             Section::Elements => &[
                 Opt::Days,
@@ -535,6 +610,7 @@ impl Section {
                 Opt::SleepIcon,
                 Opt::MoonPhase,
                 Opt::Countdown,
+                Opt::Simple,
             ],
             Section::Look => &[Opt::Scale, Opt::Opacity, Opt::Background, Opt::Theme],
             Section::Behavior => &[
@@ -571,6 +647,11 @@ pub enum Opt {
     Dimensions,
     Milestones,
     MilestoneSound,
+    Simple,
+    SimpleX,
+    SimpleY,
+    // Non è un valore: apre lo spostamento col mouse.
+    Place,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -602,6 +683,10 @@ impl Opt {
             Opt::Dimensions => "dimensions",
             Opt::Milestones => "milestones",
             Opt::MilestoneSound => "milestone_sound",
+            Opt::Simple => "simple",
+            Opt::SimpleX => "simple_x",
+            Opt::SimpleY => "simple_y",
+            Opt::Place => "place",
         }
     }
 
@@ -610,6 +695,7 @@ impl Opt {
             Opt::Scale => Some(Slider { min: MIN_SCALE, max: MAX_SCALE, step: 5, suffix: "%" }),
             Opt::Opacity => Some(Slider { min: MIN_OPACITY, max: MAX_OPACITY, step: 5, suffix: "%" }),
             Opt::OffsetX | Opt::OffsetY => Some(Slider { min: -MAX_OFFSET, max: MAX_OFFSET, step: 1, suffix: "" }),
+            Opt::SimpleX | Opt::SimpleY => Some(Slider { min: 0, max: 100, step: 1, suffix: "%" }),
             _ => None,
         }
     }
@@ -628,6 +714,7 @@ impl Opt {
             Opt::Position => &mut c.position_bottom,
             Opt::Milestones => &mut c.milestones,
             Opt::MilestoneSound => &mut c.milestone_sound,
+            Opt::Simple => &mut c.simple_mode,
             _ => return None,
         })
     }
@@ -638,6 +725,8 @@ impl Opt {
             Opt::Opacity => &mut c.opacity,
             Opt::OffsetX => &mut c.offset_x,
             Opt::OffsetY => &mut c.offset_y,
+            Opt::SimpleX => &mut c.simple_x,
+            Opt::SimpleY => &mut c.simple_y,
             _ => return None,
         })
     }
@@ -706,6 +795,9 @@ impl Opt {
     pub fn label(self, c: &Config, lang: Lang, vanilla: &Vanilla, drag: Option<f64>) -> String {
         let name_key = format!("customhud.config.{}", self.key());
         let name = tr(&name_key, lang);
+        if self == Opt::Place {
+            return name.to_owned();
+        }
         let value: String = if let Some(s) = self.slider() {
             let fraction = drag.unwrap_or_else(|| self.slider_fraction(c));
             format!("{}{}", self.slider_value(fraction), s.suffix)
@@ -806,7 +898,7 @@ pub fn title_position(width: i32, title_width: i32) -> (i32, i32) {
 }
 
 // `ConfigScreen.init` + `HeaderAndFooterLayout.arrangeElements`.
-pub fn screen_layout(section: Section, width: i32, height: i32) -> Vec<Widget> {
+pub fn screen_layout(section: Section, c: &Config, width: i32, height: i32) -> Vec<Widget> {
     let mut widgets = Vec::new();
 
     let header_y = center(HEADER_HEIGHT - (9 + 8 + BUTTON_HEIGHT));
@@ -823,7 +915,7 @@ pub fn screen_layout(section: Section, width: i32, height: i32) -> Vec<Widget> {
 
     // GridLayout a 2 colonne, spaziatura 10 x 4; un'ultima opzione dispari
     // occupa entrambe le colonne, centrata.
-    let options = section.options();
+    let options = section.options(c);
     let rows = options.len().div_ceil(2) as i32;
     let grid_width = 2 * BUTTON_WIDTH + 10;
     let grid_height = rows * BUTTON_HEIGHT + (rows - 1) * 4;
@@ -876,6 +968,10 @@ pub struct ScreenState {
     pub parent: Parent,
     // Lo slider trascinato e la sua posizione.
     pub drag: Option<(Opt, f64)>,
+    // Spostamento col mouse del contatore semplice: aperto, e dove lo si è
+    // afferrato rispetto al suo angolo (mentre il tasto è premuto).
+    pub placing: bool,
+    pub grab: Option<(f32, f32)>,
 }
 
 // Cosa deve fare `screen.rs` dopo un input.
@@ -906,6 +1002,11 @@ impl State {
                     self.screen.section = s;
                     effect.click_sound = true;
                 }
+            }
+            Target::Opt(Opt::Place) => {
+                self.screen.placing = true;
+                self.screen.grab = None;
+                effect.click_sound = true;
             }
             Target::Opt(opt) => {
                 if opt.slider().is_some() {
@@ -958,6 +1059,7 @@ impl State {
         let hovered = widgets.iter().find(|w| w.contains(cursor));
         if let Some(Widget { target: Target::Opt(opt), .. }) = hovered
             && opt.slider().is_none()
+            && *opt != Opt::Place
         {
             opt.cycle(&mut self.config, if up { -1 } else { 1 });
             return Effect {
@@ -1035,6 +1137,8 @@ impl State {
                 section: Section::Elements,
                 parent: Parent::Game,
                 drag: None,
+                placing: false,
+                grab: None,
             },
             last_seen_days: -1,
             last_frame_millis: 0,
@@ -1191,7 +1295,7 @@ pub const ITEM_SCALE: f32 = 0.6;
 // Di quanto spostare le bossbar vanilla perché non finiscano sotto l'HUD in alto
 // (0 = non spostarle).
 pub fn boss_bar_shift(c: &Config) -> i32 {
-    if !c.is_hud_visible() || c.position_bottom {
+    if !c.is_hud_visible() || c.position_bottom || c.simple_mode {
         return 0;
     }
     ((BOSS_BAR_SHIFT as f32 * c.scale as f32 / 100.0).round() as i32 + c.offset_y).max(0)
@@ -1216,6 +1320,9 @@ fn bottom_offset(f: &Frame) -> i32 {
 
 // Calcola cosa disegnare. `text_width` misura un testo in pixel GUI.
 pub fn layout(c: &Config, f: &Frame, text_width: &dyn Fn(&str) -> i32) -> Option<Hud> {
+    if c.simple_mode {
+        return Some(simple_layout(c, f, text_width));
+    }
     // Fuori dall'Overworld l'ora non ha senso: si può nascondere o mostrare "??:??"
     let hide_time = !f.overworld && c.other_dimensions == OtherDimensions::Hide;
     let unknown_time = !f.overworld && c.other_dimensions == OtherDimensions::Unknown;
@@ -1378,6 +1485,153 @@ pub fn layout(c: &Config, f: &Frame, text_width: &dyn Fn(&str) -> i32) -> Option
     })
 }
 
+// Margine attorno al testo della modalità semplice, anche senza sfondo, così il
+// testo non tocca il bordo e non si sposta quando lo sfondo si accende.
+const SIMPLE_PADDING: i32 = 3;
+
+// Il riquadro del contatore semplice: angolo in pixel GUI e dimensioni prima della
+// scala (`scale` le moltiplica attorno all'angolo).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SimpleBox {
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
+    pub scale: f32,
+}
+
+impl SimpleBox {
+    // Il cursore è sopra il riquadro, scala compresa.
+    pub fn contains(&self, (cx, cy): (f32, f32)) -> bool {
+        let (x, y) = (self.x as f32, self.y as f32);
+        cx >= x && cx < x + self.w as f32 * self.scale && cy >= y && cy < y + self.h as f32 * self.scale
+    }
+}
+
+// Spazio libero lungo un asse: lo schermo meno il riquadro ingrandito.
+fn free_space(screen: i32, size: i32, scale: f32) -> f32 {
+    (screen as f32 - size as f32 * scale).max(0.0)
+}
+
+pub fn simple_box(c: &Config, width: i32, height: i32, text_w: i32) -> SimpleBox {
+    let scale = c.scale as f32 / 100.0;
+    let w = text_w + 2 * SIMPLE_PADDING;
+    // Testo alto 8 più l'ombra
+    let h = 9 + 2 * SIMPLE_PADDING;
+    let place = |screen: i32, size: i32, percent: i32| {
+        (free_space(screen, size, scale) * percent as f32 / 100.0).round() as i32
+    };
+    SimpleBox {
+        x: place(width, w, c.simple_x),
+        y: place(height, h, c.simple_y),
+        w,
+        h,
+        scale,
+    }
+}
+
+impl State {
+    // Spostamento col mouse: il tasto premuto sopra il contatore lo afferra.
+    pub fn place_press(&mut self, b: &SimpleBox, cursor: (f32, f32)) -> bool {
+        if !b.contains(cursor) {
+            return false;
+        }
+        self.screen.grab = Some((cursor.0 - b.x as f32, cursor.1 - b.y as f32));
+        true
+    }
+
+    // Il mouse si muove col contatore afferrato: l'angolo segue il cursore e
+    // diventa la percentuale dello spazio libero, sempre dentro lo schermo.
+    pub fn place_drag(&mut self, b: &SimpleBox, cursor: (f32, f32), width: i32, height: i32) {
+        let Some((gx, gy)) = self.screen.grab else {
+            return;
+        };
+        let percent = |pos: f32, screen: i32, size: i32| {
+            let free = free_space(screen, size, b.scale);
+            if free <= 0.0 {
+                0
+            } else {
+                (pos / free * 100.0).round().clamp(0.0, 100.0) as i32
+            }
+        };
+        self.config.simple_x = percent(cursor.0 - gx, width, b.w);
+        self.config.simple_y = percent(cursor.1 - gy, height, b.h);
+    }
+
+    // Rilascio: true se il contatore era afferrato (va salvato).
+    pub fn place_release(&mut self) -> bool {
+        self.screen.grab.take().is_some()
+    }
+
+    // Le frecce spostano il contatore di un punto percentuale.
+    pub fn place_nudge(&mut self, dx: i32, dy: i32) {
+        self.config.simple_x = (self.config.simple_x + dx).clamp(0, 100);
+        self.config.simple_y = (self.config.simple_y + dy).clamp(0, 100);
+    }
+
+    // Esc o Fatto: si torna alle impostazioni.
+    pub fn place_close(&mut self) {
+        self.screen.placing = false;
+        self.screen.grab = None;
+    }
+}
+
+// Il pulsante Fatto dello spostamento, in basso al centro come nella schermata.
+pub fn place_done(width: i32, height: i32) -> Widget {
+    Widget {
+        target: Target::Done,
+        x: center(width - BUTTON_WIDTH),
+        y: height - FOOTER_HEIGHT + center(FOOTER_HEIGHT - BUTTON_HEIGHT),
+        w: BUTTON_WIDTH,
+        h: BUTTON_HEIGHT,
+    }
+}
+
+// Modalità semplice: solo "Giorno: N" (arcobaleno nei traguardi), nel punto scelto.
+// La percentuale è dello spazio libero, così a 0% e 100% il riquadro tocca il
+// bordo e resta tutto sullo schermo a ogni dimensione.
+fn simple_layout(c: &Config, f: &Frame, text_width: &dyn Fn(&str) -> i32) -> Hud {
+    let days = f.day_time.div_euclid(24000);
+    let day = day_text(days, f.lang);
+    let milestone = c.milestones && is_milestone(days);
+    let alpha = (c.opacity as f32 * 2.55).round() as u32;
+    let mut color = alpha << 24 | 0xFFFFFF;
+    if milestone {
+        let hue = (f.millis % 4000) as f32 / 4000.0;
+        color = hsv_to_rgb(hue, 0.7, 1.0) & 0xFFFFFF | alpha << 24;
+    }
+
+    let scale = c.scale as f32 / 100.0;
+    let b = simple_box(c, f.width, f.height, text_width(&day));
+    let (x, y) = (b.x, b.y);
+    let (box_w, box_h) = (b.w, b.h);
+
+    let mut draws = Vec::new();
+    if c.show_background {
+        draws.push(Draw::Fill {
+            x0: x,
+            y0: y,
+            x1: x + box_w,
+            y1: y + box_h,
+            argb: (alpha * 0x90 / 0xFF) << 24,
+        });
+    }
+    draws.push(Draw::Text {
+        text: day,
+        x: x + SIMPLE_PADDING,
+        y: y + SIMPLE_PADDING,
+        argb: color,
+    });
+    Hud {
+        draws,
+        pivot: [x as f32, y as f32],
+        scale,
+        offset: [0.0, 0.0],
+        days,
+        milestone,
+    }
+}
+
 fn mode_icon(
     draws: &mut Vec<Draw>,
     f: &Frame,
@@ -1521,9 +1775,10 @@ mod tests {
 
     #[test]
     fn every_option_has_a_name_and_tooltip_in_every_language() {
-        for section in SECTIONS {
+        let simple = Config { simple_mode: true, ..Config::default() };
+        for (section, c) in SECTIONS.iter().flat_map(|s| [(*s, Config::default()), (*s, simple.clone())]) {
             assert_ne!(tr(section.label_key(), Lang::De), section.label_key());
-            for opt in section.options() {
+            for opt in section.options(&c) {
                 let name = format!("customhud.config.{}", opt.key());
                 for lang in [Lang::En, Lang::It, Lang::De, Lang::Es, Lang::Fr, Lang::Pt] {
                     assert_ne!(tr(&name, lang), name);
@@ -1548,17 +1803,20 @@ mod tests {
             scale: 125,
             other_dimensions: OtherDimensions::Unknown,
             milestone_sound: false,
+            simple_mode: true,
+            simple_x: 80,
+            simple_y: 5,
             ..Config::default()
         };
         assert_eq!(Config::parse(&c.serialize()), c);
-        let odd = Config::parse("opacity=5\nnonsense\nfoo=bar\noffsetX=999\nscale=10");
-        assert_eq!((odd.opacity, odd.offset_x, odd.scale), (20, 100, 75));
+        let odd = Config::parse("opacity=5\nnonsense\nfoo=bar\noffsetX=999\nscale=10\nsimpleY=150");
+        assert_eq!((odd.opacity, odd.offset_x, odd.scale, odd.simple_y), (20, 100, 75, 100));
     }
 
     #[test]
     fn screen_layout_matches_header_and_footer_layout() {
         // 427x240 è la GUI di una finestra 1280x720 a scala 3
-        let widgets = screen_layout(Section::Elements, 427, 240);
+        let widgets = screen_layout(Section::Elements, &Config::default(), 427, 240);
         // Intestazione: titolo (9) + 8 + pulsanti, centrati in 58 -> y 10 e 27
         assert_eq!(title_position(427, 120), (153, 10));
         let elements = widget(&widgets, Target::Section(Section::Elements));
@@ -1571,9 +1829,15 @@ mod tests {
         assert_eq!((days.x, days.y, clock.x), (58, 88, 218));
         let bossbar = widget(&widgets, Target::Opt(Opt::Bossbar));
         assert_eq!(bossbar.y, 112);
-        // La settima opzione occupa le due colonne, centrata
+        // Quarta riga: conto alla rovescia e modalità semplice
         let countdown = widget(&widgets, Target::Opt(Opt::Countdown));
-        assert_eq!((countdown.x, countdown.y), (138, 160));
+        let simple = widget(&widgets, Target::Opt(Opt::Simple));
+        assert_eq!((countdown.x, countdown.y, simple.x, simple.y), (58, 160, 218, 160));
+        // In modalità semplice Elementi ha solo il suo interruttore, centrato
+        let c = Config { simple_mode: true, ..Config::default() };
+        let widgets = screen_layout(Section::Elements, &c, 427, 240);
+        assert_eq!(widget(&widgets, Target::Opt(Opt::Simple)).x, 138);
+        assert!(!widgets.iter().any(|w| w.target == Target::Opt(Opt::Days)));
         // Piè di pagina alto 33
         let reset = widget(&widgets, Target::Reset);
         let done = widget(&widgets, Target::Done);
@@ -1582,7 +1846,7 @@ mod tests {
 
     #[test]
     fn small_windows_push_the_grid_up() {
-        let widgets = screen_layout(Section::Elements, 320, 200);
+        let widgets = screen_layout(Section::Elements, &Config::default(), 320, 200);
         // 200 - 33 - 92 = 75 < 88
         assert_eq!(widget(&widgets, Target::Opt(Opt::Days)).y, 75);
     }
@@ -1614,7 +1878,7 @@ mod tests {
     #[test]
     fn clicks_drags_and_scrolls() {
         let mut s = State::new(Config::default());
-        let widgets = screen_layout(Section::Elements, 427, 240);
+        let widgets = screen_layout(Section::Elements, &Config::default(), 427, 240);
         let clock = widget(&widgets, Target::Opt(Opt::Clock));
         let at = |w: Widget| ((w.x + 5) as f32, (w.y + 5) as f32);
 
@@ -1629,7 +1893,7 @@ mod tests {
         assert_eq!(s.screen.section, Section::Look);
 
         // Slider della dimensione: clic all'inizio, trascina in fondo, rilascia
-        let widgets = screen_layout(Section::Look, 427, 240);
+        let widgets = screen_layout(Section::Look, &Config::default(), 427, 240);
         let scale = widget(&widgets, Target::Opt(Opt::Scale));
         let e = s.screen_click(&widgets, (scale.x as f32, (scale.y + 5) as f32), false);
         assert_eq!((s.config.scale, e.save), (75, false));
@@ -1764,6 +2028,66 @@ mod tests {
         assert!(!s.celebration_sound(100, 10_016, true));
         assert!(s.celebration_sound(101, 10_032, true));
         assert!(!s.celebration_sound(102, 10_048, false));
+    }
+
+    #[test]
+    fn simple_mode_shows_only_the_day_where_chosen() {
+        let mut c = Config {
+            simple_mode: true,
+            show_day_counter: false,
+            show_clock: false,
+            show_bossbar: false,
+            ..Config::default()
+        };
+        // In alto a sinistra: solo il testo, nessuna icona né barra
+        let hud = layout(&c, &frame(24000 * 7 + 1000), &width).unwrap();
+        assert_eq!(texts(&hud), ["Day: 7"]);
+        assert_eq!(hud.draws.len(), 1);
+        assert_eq!(hud.draws[0], Draw::Text { text: "Day: 7".into(), x: 3, y: 3, argb: 0xFFFFFFFF });
+        assert_eq!((hud.pivot, hud.offset), ([0.0, 0.0], [0.0, 0.0]));
+        // In basso a destra il riquadro (36 + 6) x 15 tocca i bordi, anche ingrandito
+        c.simple_x = 100;
+        c.simple_y = 100;
+        let hud = layout(&c, &frame(24000 * 7), &width).unwrap();
+        assert_eq!(hud.pivot, [358.0, 225.0]);
+        c.scale = 150;
+        let hud = layout(&c, &frame(24000 * 7), &width).unwrap();
+        assert_eq!(hud.pivot, [337.0, 218.0]);
+        // Sfondo dietro al riquadro, arcobaleno nei traguardi, bossbar ferme
+        c.show_background = true;
+        let hud = layout(&c, &frame(24000 * 100), &width).unwrap();
+        assert!(matches!(hud.draws[0], Draw::Fill { .. }));
+        assert!(hud.milestone);
+        assert_eq!(boss_bar_shift(&c), 0);
+    }
+
+    #[test]
+    fn dragging_places_the_simple_counter() {
+        let mut s = State::new(Config { simple_mode: true, ..Config::default() });
+        // "Sposta col mouse" è l'ultima voce di Comportamento e apre lo spostamento
+        let widgets = screen_layout(Section::Behavior, &s.config, 427, 240);
+        let place = widget(&widgets, Target::Opt(Opt::Place));
+        assert_eq!(Opt::Place.label(&s.config, Lang::It, &vanilla(), None), "Sposta col mouse");
+        assert!(s.screen_click(&widgets, ((place.x + 5) as f32, (place.y + 5) as f32), false).click_sound);
+        assert!(s.screen.placing);
+
+        // Riquadro 42x15 in alto a sinistra: fuori non si afferra
+        let b = simple_box(&s.config, 400, 240, 36);
+        assert!(!s.place_press(&b, (100.0, 100.0)));
+        assert!(s.place_press(&b, (10.0, 5.0)));
+        // Afferrato a (10, 5): l'angolo va a (189, 117.5) -> metà dello spazio libero
+        s.place_drag(&b, (189.0 + 10.0, 112.5 + 5.0), 400, 240);
+        assert_eq!((s.config.simple_x, s.config.simple_y), (53, 50));
+        // Oltre il bordo resta dentro lo schermo
+        s.place_drag(&b, (900.0, -50.0), 400, 240);
+        assert_eq!((s.config.simple_x, s.config.simple_y), (100, 0));
+        assert!(s.place_release() && !s.place_release());
+        s.place_nudge(1, -1);
+        assert_eq!((s.config.simple_x, s.config.simple_y), (100, 0));
+        s.place_nudge(-3, 2);
+        assert_eq!((s.config.simple_x, s.config.simple_y), (97, 2));
+        s.place_close();
+        assert!(!s.screen.placing);
     }
 
     #[test]
