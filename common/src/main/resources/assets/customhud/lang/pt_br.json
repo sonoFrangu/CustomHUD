@@ -54,5 +54,14 @@
   "customhud.config.milestones.tooltip": "Contador arco-íris e ícone especial nos dias 50, 100, 365...",
   "customhud.config.milestone_sound": "Som dos marcos",
   "customhud.config.milestone_sound.tooltip": "Toca um som quando começa um dia marco.",
+  "customhud.config.simple": "Modo simples",
+  "customhud.config.simple.tooltip": "Mostra só \"Dia: N\", onde quiser na tela: mova com os botões que aparecem aqui.",
+  "customhud.config.place": "Mover com o mouse",
+  "customhud.config.place.tooltip": "Arraste o contador para onde quiser na tela.",
+  "customhud.config.simple_x": "Posição X",
+  "customhud.config.simple_x.tooltip": "Onde fica o contador na horizontal: 0% borda esquerda, 100% borda direita.",
+  "customhud.config.simple_y": "Posição Y",
+  "customhud.config.simple_y.tooltip": "Onde fica o contador na vertical: 0% borda superior, 100% borda inferior.",
+  "customhud.place.hint": "Arraste o contador com o mouse. As setas o movem um pouco. Esc ou Concluído para voltar.",
   "customhud.config.reset": "Restaurar padrão"
 }

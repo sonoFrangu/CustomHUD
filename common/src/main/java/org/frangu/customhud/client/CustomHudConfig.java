@@ -41,6 +41,12 @@ public final class CustomHudConfig {
     public boolean milestones = true;
     public boolean milestoneSound = true;
 
+    // Modalità semplice: solo "Giorno: N", in un punto qualsiasi dello schermo
+    // (percentuale dello spazio libero, da sinistra e dall'alto).
+    public boolean simpleMode = false;
+    public int simpleX = 50;
+    public int simpleY = 77;
+
     public static final int MIN_SCALE = 75, MAX_SCALE = 150;
     public static final int MIN_OPACITY = 20, MAX_OPACITY = 100;
     public static final int MAX_OFFSET = 100;
@@ -56,7 +62,7 @@ public final class CustomHudConfig {
     }
 
     public boolean isHudVisible() {
-        return showDayCounter || showClock || showBossbar;
+        return simpleMode || showDayCounter || showClock || showBossbar;
     }
 
     public static void reset() {
@@ -70,6 +76,8 @@ public final class CustomHudConfig {
         opacity = Math.clamp(opacity, MIN_OPACITY, MAX_OPACITY);
         offsetX = Math.clamp(offsetX, -MAX_OFFSET, MAX_OFFSET);
         offsetY = Math.clamp(offsetY, -MAX_OFFSET, MAX_OFFSET);
+        simpleX = Math.clamp(simpleX, 0, 100);
+        simpleY = Math.clamp(simpleY, 0, 100);
         if (barTheme == null) barTheme = BarTheme.CLASSIC;
         if (otherDimensions == null) otherDimensions = OtherDimensions.SHOW;
     }
