@@ -44,7 +44,7 @@ public final class CustomhudClient {
     /** Le bossbar vanilla vanno spostate sotto l'HUD quando è visibile in alto. */
     public static boolean shouldShiftBossBars() {
         CustomHudConfig config = CustomHudConfig.INSTANCE;
-        return config.isHudVisible() && !config.positionBottom;
+        return config.isHudVisible() && !config.positionBottom && !config.simpleMode;
     }
 
     public static void pushBossBarShift(GuiGraphicsExtractor graphics) {

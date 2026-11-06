@@ -93,6 +93,10 @@ public final class DayHud {
         if (mc.gui.screen() instanceof ConfigScreen) return;
 
         CustomHudConfig config = CustomHudConfig.INSTANCE;
+        if (config.simpleMode) {
+            extractSimple(g, mc, player, level, config);
+            return;
+        }
 
         // Fuori dall'Overworld l'ora non ha senso: si può nascondere o mostrare "??:??"
         boolean overworld = level.dimension() == Level.OVERWORLD;
@@ -208,6 +212,72 @@ public final class DayHud {
             }
         }
 
+        pose.popMatrix();
+    }
+
+    /**
+     * Margine attorno al testo della modalità semplice, anche senza sfondo, così il testo
+     * non tocca il bordo e non si sposta quando lo sfondo si accende.
+     */
+    private static final int SIMPLE_PADDING = 3;
+
+    /** Il riquadro del contatore semplice: angolo in pixel GUI e dimensioni prima della scala. */
+    public record SimpleBox(int x, int y, int width, int height, float scale) {
+        /** Il punto è sopra il riquadro, scala compresa. */
+        public boolean contains(double mouseX, double mouseY) {
+            return mouseX >= x && mouseX < x + width * scale && mouseY >= y && mouseY < y + height * scale;
+        }
+    }
+
+    /** Spazio libero lungo un asse: lo schermo meno il riquadro ingrandito. */
+    public static float freeSpace(int screen, int size, float scale) {
+        return Math.max(0f, screen - size * scale);
+    }
+
+    /**
+     * Dove va il riquadro: la percentuale è dello spazio libero, così a 0% e 100% tocca
+     * il bordo e resta tutto sullo schermo a ogni dimensione.
+     */
+    public static SimpleBox simpleBox(CustomHudConfig config, int screenWidth, int screenHeight, int textWidth) {
+        float scale = config.scale / 100f;
+        int width = textWidth + 2 * SIMPLE_PADDING;
+        // Testo alto 8 più l'ombra
+        int height = 9 + 2 * SIMPLE_PADDING;
+        int x = Math.round(freeSpace(screenWidth, width, scale) * config.simpleX / 100f);
+        int y = Math.round(freeSpace(screenHeight, height, scale) * config.simpleY / 100f);
+        return new SimpleBox(x, y, width, height, scale);
+    }
+
+    /** Il testo "Giorno: N" di adesso, per chi deve misurarlo (lo spostamento col mouse). */
+    public static Component currentDayText(ClientLevel level) {
+        long days = Math.floorDiv(level.getOverworldClockTime(), 24000L);
+        return Component.translatable("hud.customhud.day", days);
+    }
+
+    /** Modalità semplice: solo "Giorno: N" (arcobaleno nei traguardi), nel punto scelto. */
+    private void extractSimple(GuiGraphicsExtractor g, Minecraft mc, LocalPlayer player, ClientLevel level,
+                               CustomHudConfig config) {
+        long days = Math.floorDiv(level.getOverworldClockTime(), 24000L);
+        updateDayText(mc.font, days);
+        boolean milestone = config.milestones && isMilestone(days);
+        handleCelebrationSound(player, level, days, milestone && config.milestoneSound);
+
+        int alpha = Math.round(config.opacity * 2.55f);
+        int textColor = alpha << 24 | 0xFFFFFF;
+        if (milestone) {
+            float hue = (System.currentTimeMillis() % 4000L) / 4000f;
+            textColor = Mth.hsvToRgb(hue, 0.7f, 1.0f) & 0xFFFFFF | alpha << 24;
+        }
+
+        SimpleBox box = simpleBox(config, g.guiWidth(), g.guiHeight(), dayWidth);
+        Matrix3x2fStack pose = g.pose();
+        pose.pushMatrix();
+        pose.translate(box.x(), box.y());
+        pose.scale(box.scale(), box.scale());
+        if (config.showBackground) {
+            g.fill(0, 0, box.width(), box.height(), (alpha * 0x90 / 0xFF) << 24);
+        }
+        g.text(mc.font, dayText, SIMPLE_PADDING, SIMPLE_PADDING, textColor, true);
         pose.popMatrix();
     }
 
