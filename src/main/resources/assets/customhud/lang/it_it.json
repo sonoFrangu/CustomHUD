@@ -54,5 +54,14 @@
   "customhud.config.milestones.tooltip": "Contatore arcobaleno e icona speciale nei giorni 50, 100, 365...",
   "customhud.config.milestone_sound": "Suono traguardi",
   "customhud.config.milestone_sound.tooltip": "Riproduce un suono quando inizia un giorno traguardo.",
+  "customhud.config.simple": "Modalità semplice",
+  "customhud.config.simple.tooltip": "Mostra solo \"Giorno: N\", dove vuoi sullo schermo: spostalo con i pulsanti che compaiono qui.",
+  "customhud.config.place": "Sposta col mouse",
+  "customhud.config.place.tooltip": "Trascina il contatore dove vuoi sullo schermo.",
+  "customhud.config.simple_x": "Posizione X",
+  "customhud.config.simple_x.tooltip": "Dove va il contatore in orizzontale: 0% bordo sinistro, 100% bordo destro.",
+  "customhud.config.simple_y": "Posizione Y",
+  "customhud.config.simple_y.tooltip": "Dove va il contatore in verticale: 0% bordo in alto, 100% bordo in basso.",
+  "customhud.place.hint": "Trascina il contatore col mouse. Le frecce lo spostano di poco. Esc o Fatto per tornare.",
   "customhud.config.reset": "Ripristina predefiniti"
 }

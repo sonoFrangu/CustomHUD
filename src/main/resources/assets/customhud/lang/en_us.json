@@ -54,5 +54,14 @@
   "customhud.config.milestones.tooltip": "Rainbow day counter and special icon on days 50, 100, 365...",
   "customhud.config.milestone_sound": "Milestone sound",
   "customhud.config.milestone_sound.tooltip": "Play a sound when a milestone day starts.",
+  "customhud.config.simple": "Simple mode",
+  "customhud.config.simple.tooltip": "Show only \"Day: N\", anywhere on the screen: move it with the buttons that appear here.",
+  "customhud.config.place": "Move with mouse",
+  "customhud.config.place.tooltip": "Drag the counter wherever you want on the screen.",
+  "customhud.config.simple_x": "Position X",
+  "customhud.config.simple_x.tooltip": "Where the counter goes across the screen: 0% left edge, 100% right edge.",
+  "customhud.config.simple_y": "Position Y",
+  "customhud.config.simple_y.tooltip": "Where the counter goes up and down: 0% top edge, 100% bottom edge.",
+  "customhud.place.hint": "Drag the counter with the mouse. Arrow keys move it a little. Esc or Done to go back.",
   "customhud.config.reset": "Reset defaults"
 }

@@ -54,5 +54,14 @@
   "customhud.config.milestones.tooltip": "Compteur arc-en-ciel et icône spéciale aux jours 50, 100, 365...",
   "customhud.config.milestone_sound": "Son des étapes",
   "customhud.config.milestone_sound.tooltip": "Joue un son quand un jour d'étape commence.",
+  "customhud.config.simple": "Mode simple",
+  "customhud.config.simple.tooltip": "Affiche seulement « Jour : N », où tu veux à l'écran : déplace-le avec les boutons qui apparaissent ici.",
+  "customhud.config.place": "Déplacer à la souris",
+  "customhud.config.place.tooltip": "Fais glisser le compteur où tu veux à l'écran.",
+  "customhud.config.simple_x": "Position X",
+  "customhud.config.simple_x.tooltip": "Où va le compteur à l'horizontale : 0% bord gauche, 100% bord droit.",
+  "customhud.config.simple_y": "Position Y",
+  "customhud.config.simple_y.tooltip": "Où va le compteur à la verticale : 0% bord haut, 100% bord bas.",
+  "customhud.place.hint": "Fais glisser le compteur à la souris. Les flèches le déplacent un peu. Échap ou Terminé pour revenir.",
   "customhud.config.reset": "Réinitialiser"
 }

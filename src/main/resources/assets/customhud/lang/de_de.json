@@ -54,5 +54,14 @@
   "customhud.config.milestones.tooltip": "Regenbogen-Zähler und besonderes Symbol an Tag 50, 100, 365...",
   "customhud.config.milestone_sound": "Meilenstein-Ton",
   "customhud.config.milestone_sound.tooltip": "Spielt einen Ton, wenn ein Meilenstein-Tag beginnt.",
+  "customhud.config.simple": "Einfacher Modus",
+  "customhud.config.simple.tooltip": "Zeigt nur \"Tag: N\", überall auf dem Bildschirm: verschieb es mit den Knöpfen, die hier erscheinen.",
+  "customhud.config.place": "Mit der Maus bewegen",
+  "customhud.config.place.tooltip": "Zieh den Zähler an eine beliebige Stelle auf dem Bildschirm.",
+  "customhud.config.simple_x": "Position X",
+  "customhud.config.simple_x.tooltip": "Wo der Zähler waagerecht steht: 0% linker Rand, 100% rechter Rand.",
+  "customhud.config.simple_y": "Position Y",
+  "customhud.config.simple_y.tooltip": "Wo der Zähler senkrecht steht: 0% oberer Rand, 100% unterer Rand.",
+  "customhud.place.hint": "Zieh den Zähler mit der Maus. Pfeiltasten verschieben ihn ein wenig. Esc oder Fertig zum Zurückkehren.",
   "customhud.config.reset": "Standard wiederherstellen"
 }

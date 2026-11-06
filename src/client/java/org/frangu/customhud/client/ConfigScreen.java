@@ -53,7 +53,9 @@ public class ConfigScreen extends Screen {
 
         GridLayout grid = new GridLayout().columnSpacing(10).rowSpacing(4);
         GridLayout.RowHelper rows = grid.createRowHelper(2);
-        switch (section) {
+        if (config.simpleMode) {
+            addSimpleOptions(rows, config);
+        } else switch (section) {
             case ELEMENTS -> {
                 rows.addChild(toggle("days", config.showDayCounter, (c, v) -> c.showDayCounter = v));
                 rows.addChild(toggle("clock", config.showClock, (c, v) -> c.showClock = v));
@@ -61,8 +63,8 @@ public class ConfigScreen extends Screen {
                 rows.addChild(toggle("night_ticks", config.showNightTicks, (c, v) -> c.showNightTicks = v));
                 rows.addChild(toggle("sleep_icon", config.showSleepIcon, (c, v) -> c.showSleepIcon = v));
                 rows.addChild(toggle("moon_phase", config.showMoonPhase, (c, v) -> c.showMoonPhase = v));
-                rows.addChild(toggle("countdown", config.showNightCountdown, (c, v) -> c.showNightCountdown = v), 2,
-                        rows.newCellSettings().alignHorizontallyCenter());
+                rows.addChild(toggle("countdown", config.showNightCountdown, (c, v) -> c.showNightCountdown = v));
+                rows.addChild(simpleToggle(config));
             }
             case LOOK -> {
                 rows.addChild(new IntSlider("scale", CustomHudConfig.MIN_SCALE, CustomHudConfig.MAX_SCALE, 5, "%",
@@ -99,6 +101,50 @@ public class ConfigScreen extends Screen {
 
         layout.visitWidgets(this::addRenderableWidget);
         repositionElements();
+    }
+
+    /**
+     * In modalità semplice restano solo le opzioni che contano per "Giorno: N";
+     * i comandi per spostarlo stanno accanto al suo interruttore.
+     */
+    private void addSimpleOptions(GridLayout.RowHelper rows, CustomHudConfig config) {
+        switch (section) {
+            case ELEMENTS -> {
+                rows.addChild(simpleToggle(config));
+                Button place = Button.builder(Component.translatable("customhud.config.place"),
+                                button -> this.minecraft.setScreen(new PlaceScreen(this)))
+                        .width(BUTTON_WIDTH).tooltip(tooltip("place")).build();
+                // Serve un mondo su cui vedere dove finisce
+                place.active = this.minecraft.level != null;
+                rows.addChild(place);
+                rows.addChild(new IntSlider("simple_x", 0, 100, 1, "%", config.simpleX,
+                        v -> CustomHudConfig.INSTANCE.simpleX = v));
+                rows.addChild(new IntSlider("simple_y", 0, 100, 1, "%", config.simpleY,
+                        v -> CustomHudConfig.INSTANCE.simpleY = v));
+            }
+            case LOOK -> {
+                rows.addChild(new IntSlider("scale", CustomHudConfig.MIN_SCALE, CustomHudConfig.MAX_SCALE, 5, "%",
+                        config.scale, v -> CustomHudConfig.INSTANCE.scale = v));
+                rows.addChild(new IntSlider("opacity", CustomHudConfig.MIN_OPACITY, CustomHudConfig.MAX_OPACITY, 5, "%",
+                        config.opacity, v -> CustomHudConfig.INSTANCE.opacity = v));
+                rows.addChild(toggle("background", config.showBackground, (c, v) -> c.showBackground = v), 2,
+                        rows.newCellSettings().alignHorizontallyCenter());
+            }
+            case BEHAVIOR -> {
+                rows.addChild(toggle("milestones", config.milestones, (c, v) -> c.milestones = v));
+                rows.addChild(toggle("milestone_sound", config.milestoneSound, (c, v) -> c.milestoneSound = v));
+            }
+        }
+    }
+
+    /** Accende o spegne la modalità semplice e ridisegna la schermata con le sue opzioni. */
+    private CycleButton<Boolean> simpleToggle(CustomHudConfig config) {
+        return CycleButton.onOffBuilder(config.simpleMode)
+                .withTooltip(v -> tooltip("simple"))
+                .create(0, 0, BUTTON_WIDTH, 20, Component.translatable("customhud.config.simple"), (b, v) -> {
+                    apply((c, value) -> c.simpleMode = value, v);
+                    rebuildWidgets();
+                });
     }
 
     private static String key(Enum<?> value) {

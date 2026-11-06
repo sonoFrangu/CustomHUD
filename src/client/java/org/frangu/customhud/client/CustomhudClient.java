@@ -46,7 +46,7 @@ public class CustomhudClient implements ClientModInitializer {
         // Sposta le bossbar vanilla sotto il nostro HUD quando è in alto
         HudElementRegistry.replaceElement(VanillaHudElements.BOSS_BAR, original -> (graphics, deltaTracker) -> {
             CustomHudConfig config = CustomHudConfig.INSTANCE;
-            if (!config.isHudVisible() || config.positionBottom) {
+            if (!config.isHudVisible() || config.positionBottom || config.simpleMode) {
                 original.render(graphics, deltaTracker);
                 return;
             }
