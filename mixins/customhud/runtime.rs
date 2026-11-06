@@ -302,12 +302,12 @@ const TRANSLATIONS: &[(&str, Tr)] = &[
     ]),
     ("customhud.config.simple", ["Simple mode", "Modalità semplice", "Einfacher Modus", "Modo simple", "Mode simple", "Modo simples"]),
     ("customhud.config.simple.tooltip", [
-        "Show only \"Day: N\", anywhere on the screen. Choose where in Behavior.",
-        "Mostra solo \"Giorno: N\", dove vuoi sullo schermo. Scegli dove in Comportamento.",
-        "Zeigt nur \"Tag: N\", überall auf dem Bildschirm. Wo, legst du unter Verhalten fest.",
-        "Muestra solo \"Día: N\", donde quieras en la pantalla. Elige dónde en Comportamiento.",
-        "Affiche seulement « Jour : N », où tu veux à l'écran. Choisis où dans Comportement.",
-        "Mostra só \"Dia: N\", onde quiser na tela. Escolha onde em Comportamento.",
+        "Show only \"Day: N\", anywhere on the screen: move it with the buttons that appear here.",
+        "Mostra solo \"Giorno: N\", dove vuoi sullo schermo: spostalo con i pulsanti che compaiono qui.",
+        "Zeigt nur \"Tag: N\", überall auf dem Bildschirm: verschieb es mit den Knöpfen, die hier erscheinen.",
+        "Muestra solo \"Día: N\", donde quieras en la pantalla: muévelo con los botones que aparecen aquí.",
+        "Affiche seulement « Jour : N », où tu veux à l'écran : déplace-le avec les boutons qui apparaissent ici.",
+        "Mostra só \"Dia: N\", onde quiser na tela: mova com os botões que aparecem aqui.",
     ]),
     ("customhud.config.simple_x", ["Position X", "Posizione X", "Position X", "Posición X", "Position X", "Posição X"]),
     ("customhud.config.simple_x.tooltip", [
@@ -585,20 +585,14 @@ impl Section {
         }
     }
 
-    // In modalità semplice restano solo le opzioni che contano per "Giorno: N",
-    // e la posizione libera prende il posto di Posizione e spostamenti.
+    // In modalità semplice restano solo le opzioni che contano per "Giorno: N";
+    // i comandi per spostarlo stanno accanto al suo interruttore.
     fn options(self, c: &Config) -> &'static [Opt] {
         if c.simple_mode {
             return match self {
-                Section::Elements => &[Opt::Simple],
+                Section::Elements => &[Opt::Simple, Opt::Place, Opt::SimpleX, Opt::SimpleY],
                 Section::Look => &[Opt::Scale, Opt::Opacity, Opt::Background],
-                Section::Behavior => &[
-                    Opt::SimpleX,
-                    Opt::SimpleY,
-                    Opt::Milestones,
-                    Opt::MilestoneSound,
-                    Opt::Place,
-                ],
+                Section::Behavior => &[Opt::Milestones, Opt::MilestoneSound],
             };
         }
         match self {
@@ -1833,10 +1827,11 @@ mod tests {
         let countdown = widget(&widgets, Target::Opt(Opt::Countdown));
         let simple = widget(&widgets, Target::Opt(Opt::Simple));
         assert_eq!((countdown.x, countdown.y, simple.x, simple.y), (58, 160, 218, 160));
-        // In modalità semplice Elementi ha solo il suo interruttore, centrato
+        // In modalità semplice Elementi ha l'interruttore e, accanto, i comandi per spostarlo
         let c = Config { simple_mode: true, ..Config::default() };
         let widgets = screen_layout(Section::Elements, &c, 427, 240);
-        assert_eq!(widget(&widgets, Target::Opt(Opt::Simple)).x, 138);
+        assert_eq!(widget(&widgets, Target::Opt(Opt::Simple)).x, 58);
+        assert_eq!(widget(&widgets, Target::Opt(Opt::Place)).x, 218);
         assert!(!widgets.iter().any(|w| w.target == Target::Opt(Opt::Days)));
         // Piè di pagina alto 33
         let reset = widget(&widgets, Target::Reset);
@@ -2064,8 +2059,8 @@ mod tests {
     #[test]
     fn dragging_places_the_simple_counter() {
         let mut s = State::new(Config { simple_mode: true, ..Config::default() });
-        // "Sposta col mouse" è l'ultima voce di Comportamento e apre lo spostamento
-        let widgets = screen_layout(Section::Behavior, &s.config, 427, 240);
+        // "Sposta col mouse", accanto all'interruttore, apre lo spostamento
+        let widgets = screen_layout(Section::Elements, &s.config, 427, 240);
         let place = widget(&widgets, Target::Opt(Opt::Place));
         assert_eq!(Opt::Place.label(&s.config, Lang::It, &vanilla(), None), "Sposta col mouse");
         assert!(s.screen_click(&widgets, ((place.x + 5) as f32, (place.y + 5) as f32), false).click_sound);

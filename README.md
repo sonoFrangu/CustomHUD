@@ -20,7 +20,8 @@ sprite vanilla e stesse icone.
 - Nether ed End: ora dell'Overworld, `??:??` oppure nascosti.
 - Testi in inglese, italiano, tedesco, spagnolo, francese e portoghese.
 - Modalità semplice: solo "Giorno: N", dove vuoi sullo schermo (Posizione X/Y in
-  percentuale, oppure trascinato col mouse con "Sposta col mouse", frecce per i ritocchi).
+  percentuale, oppure trascinato col mouse con "Sposta col mouse", frecce per i ritocchi),
+  tutto in Elementi accanto all'interruttore.
 - Tasto **H** (modificabile in Options > Mods) per aprire le impostazioni.
 
 La schermata delle impostazioni è la `ConfigScreen` Java: titolo, schede Elementi /
