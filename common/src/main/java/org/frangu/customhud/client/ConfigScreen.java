@@ -64,6 +64,8 @@ public class ConfigScreen extends Screen {
                 rows.addChild(toggle("sleep_icon", config.showSleepIcon, (c, v) -> c.showSleepIcon = v));
                 rows.addChild(toggle("moon_phase", config.showMoonPhase, (c, v) -> c.showMoonPhase = v));
                 rows.addChild(toggle("countdown", config.showNightCountdown, (c, v) -> c.showNightCountdown = v));
+                rows.addChild(toggle("weather", config.showWeather, (c, v) -> c.showWeather = v));
+                rows.addChild(toggle("phantom", config.phantomWarning, (c, v) -> c.phantomWarning = v));
                 rows.addChild(simpleToggle(config));
             }
             case LOOK -> {
@@ -86,8 +88,8 @@ public class ConfigScreen extends Screen {
                 rows.addChild(choice("dimensions", CustomHudConfig.OtherDimensions.values(), config.otherDimensions,
                         (c, v) -> c.otherDimensions = v));
                 rows.addChild(toggle("milestones", config.milestones, (c, v) -> c.milestones = v));
-                rows.addChild(toggle("milestone_sound", config.milestoneSound, (c, v) -> c.milestoneSound = v), 2,
-                        rows.newCellSettings().alignHorizontallyCenter());
+                rows.addChild(toggle("milestone_sound", config.milestoneSound, (c, v) -> c.milestoneSound = v));
+                rows.addChild(milestoneEvery(config));
             }
         }
         layout.addToContents(grid);
@@ -133,8 +135,21 @@ public class ConfigScreen extends Screen {
             case BEHAVIOR -> {
                 rows.addChild(toggle("milestones", config.milestones, (c, v) -> c.milestones = v));
                 rows.addChild(toggle("milestone_sound", config.milestoneSound, (c, v) -> c.milestoneSound = v));
+                rows.addChild(milestoneEvery(config), 2, rows.newCellSettings().alignHorizontallyCenter());
             }
         }
+    }
+
+    /** "Traguardo ogni: Classico / 10 giorni / 25 giorni...". */
+    private CycleButton<Integer> milestoneEvery(CustomHudConfig config) {
+        return CycleButton.builder((Integer v) -> v == 0
+                                ? Component.translatable("customhud.config.milestone_every.classic")
+                                : Component.translatable("customhud.config.milestone_every.days", v),
+                        config.milestoneEvery)
+                .withValues(CustomHudConfig.MILESTONE_EVERY)
+                .withTooltip(v -> tooltip("milestone_every"))
+                .create(0, 0, BUTTON_WIDTH, 20, Component.translatable("customhud.config.milestone_every"),
+                        (b, v) -> apply((c, value) -> c.milestoneEvery = value, v));
     }
 
     /** Accende o spegne la modalità semplice e ridisegna la schermata con le sue opzioni. */
