@@ -65,7 +65,8 @@ pub(super) fn draw_hud(game: &mut Game<'_>, batch: &mut HudBatch) {
     let overworld = player.dimension == "minecraft:overworld";
     let config = hud::with_state(|| load(game), |s| s.config.clone());
     let bars = status_bar_height(game);
-    let frame = frame(game, batch, overworld, bars);
+    let since_rest = if config.phantom_warning { time_since_rest(game) } else { 0 };
+    let frame = frame(game, batch, overworld, bars, since_rest);
     let Some(out) = hud::layout(&config, &frame, &|t: &str| text_width(game, t)) else {
         return;
     };
@@ -76,13 +77,21 @@ pub(super) fn draw_hud(game: &mut Game<'_>, batch: &mut HudBatch) {
     draw_out(game, batch, &out);
 }
 
-fn frame(game: &Game<'_>, batch: &HudBatch, overworld: bool, status_bar_height: i32) -> hud::Frame {
+fn frame(
+    game: &Game<'_>,
+    batch: &HudBatch,
+    overworld: bool,
+    status_bar_height: i32,
+    since_rest: i64,
+) -> hud::Frame {
     hud::Frame {
         day_time: game.world.day_time,
         width: batch.width as i32,
         height: batch.height as i32,
         overworld,
         thundering: game.world.weather.levels(1.0).1 > 0.9,
+        weather: weather(game),
+        since_rest,
         mode: match game.mode {
             GameMode::Survival => hud::Mode::Survival,
             GameMode::Creative => hud::Mode::Creative,
@@ -95,6 +104,43 @@ fn frame(game: &Game<'_>, batch: &HudBatch, overworld: bool, status_bar_height: 
         millis: millis(),
         lang: lang(game),
     }
+}
+
+// Il tempo dove si trova il giocatore: i livelli di pioggia e temporale del suo
+// livello (`Level.getRainLevel`/`getThunderLevel`) e la precipitazione del bioma
+// lì (`Biome.getPrecipitationAt`).
+fn weather(game: &Game<'_>) -> hud::Weather {
+    let (rain, thunder) = game.weather_levels(1.0);
+    let snow = game.native_player().and_then(|p| {
+        let (x, y, z) = (p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32);
+        game.precipitation(x, y, z)
+    });
+    hud::Weather::from_levels(rain, thunder, snow)
+}
+
+// Ogni quanto chiedere le statistiche a un server: il client non le riceve da solo.
+const STATS_REQUEST_MILLIS: u64 = 10_000;
+static LAST_STATS_REQUEST: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+// Tick dall'ultima dormita (statistica `time_since_rest`), solo per chi i phantom
+// li attira (sopravvivenza e avventura). In singleplayer il gioco la conta da sé;
+// un server la manda solo su richiesta (`ClientCommand` 1, come la schermata
+// delle statistiche): la si chiede ogni tanto.
+fn time_since_rest(game: &Game<'_>) -> i64 {
+    if !matches!(game.mode, GameMode::Survival | GameMode::Adventure) {
+        return 0;
+    }
+    if game.remote.is_some() {
+        use std::sync::atomic::Ordering;
+        let now = millis();
+        let last = LAST_STATS_REQUEST.load(Ordering::Relaxed);
+        if now.saturating_sub(last) >= STATS_REQUEST_MILLIS {
+            LAST_STATS_REQUEST.store(now, Ordering::Relaxed);
+            use horizon_protocol::packets::play;
+            game.send(play::Serverbound::ClientCommand(play::ClientCommand { action: 1 }));
+        }
+    }
+    i64::from(game.stats.get("custom", "minecraft:time_since_rest"))
 }
 
 // Quanto salgono dal fondo dello schermo le righe di vita e fame, come le
@@ -359,7 +405,7 @@ fn draw_placing(game: &mut Game<'_>, batch: &mut HudBatch) {
     let (dx, dy, dw, dh) = (done.x as f32, done.y as f32, done.w as f32, done.h as f32);
     ui::button(batch, atlas, dx, dy, dw, dh, &label, true, done.contains(cursor));
 
-    let frame = frame(game, batch, true, bars);
+    let frame = frame(game, batch, true, bars, 0);
     let out = hud::layout(&config, &frame, &|t: &str| text_width(game, t));
     if let Some(out) = out {
         draw_out(game, batch, &out);

@@ -12,9 +12,15 @@ sprite vanilla e stesse icone.
 
 - Contatore dei giorni con l'icona della modalità (cuore, cuore hardcore, erba, spada,
   occhio di ender); mela d'oro o totem nei giorni traguardo, con testo arcobaleno e suono.
+  "Traguardo ogni": i classici (50, 365 e ogni 100) oppure ogni 10, 25, 50, 100, 250,
+  365, 500 o 1000 giorni.
 - Orologio a 24 ore o 12 ore con l'icona dell'orologio, o del letto quando puoi dormire.
 - Barra giorno/notte con lo sprite della bossbar vanilla e i 4 temi di colore.
 - Conto alla rovescia, fase lunare, tacche della notte, sfondo.
+- Meteo: una nuvoletta a pixel dopo l'orologio quando piove, con gocce, neve o fulmine
+  secondo il tempo e il bioma dove sei.
+- Avviso phantom: dopo 3 giorni senza dormire, la membrana di phantom con i giorni
+  dall'ultima dormita (statistica `time_since_rest`, chiesta al server ogni 10 secondi).
 - Dimensione, opacità, posizione in alto/in basso, spostamento.
 - Le bossbar vanilla scendono sotto l'HUD quando è in alto.
 - Nether ed End: ora dell'Overworld, `??:??` oppure nascosti.
@@ -35,9 +41,11 @@ di `customhud.json`.
 
 ```text
 mixins/customhud/
-  horizon-mixin.toml   2 moduli + 9 hook HEAD
-  runtime.rs           tutta la logica (HUD, configurazione, layout della schermata,
-                       traduzioni), con i test; anche libreria Cargo autonoma
+  horizon-mixin.toml   5 moduli + 9 hook HEAD
+  runtime.rs           l'HUD e lo stato della mod (riesporta gli altri tre moduli)
+  config.rs            la configurazione: valori, limiti, lettura e scrittura
+  config_screen.rs     la logica della schermata: widget, etichette, clic, slider
+  text.rs              lingue e traduzioni
   screen.rs            lato gioco: disegna HUD e schermata, gestisce l'input
   hud.rs               native_hud: l'HUD
   key.rs               native_key: il tasto apre la schermata
@@ -48,6 +56,8 @@ mixins/customhud/
   input.rs             window_event (annullabile): mouse e tastiera della schermata
   boss_bars.rs         draw_boss_bars: segna dove iniziano le bossbar vanilla
   extras.rs            draw_extras: le sposta sotto l'HUD quando è in alto
+src/lib.rs             la libreria Cargo autonoma: gli stessi quattro file di logica,
+                       fratelli come nel gioco, con i loro test
 compatibility.json     revisioni fissate di Horizon e horizon-mixins
 ```
 
@@ -73,7 +83,7 @@ Linux e Python 3.12.
 
 ## Pubblicare
 
-`python3 tools/package.py` crea `target/customhud-1.7.0.hnmod`, da pubblicare come
+`python3 tools/package.py` crea `target/customhud-1.8.0.hnmod`, da pubblicare come
 release GitHub e inviare al registro
 [horizon-mods](https://github.com/horizon-rust/horizon-mods) come `native-mod`.
 

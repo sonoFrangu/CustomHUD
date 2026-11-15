@@ -1,17 +1,39 @@
 [mod]
 id = "customhud"
-version = "1.7.1"
+version = "1.8.0"
 priority = 100
 
 [compatibility]
-horizon_revision = "fdc87aecdbd116bf1e08adcd062fcbaea8c2e2ca"
+horizon_revision = "9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0"
 
-# La logica (configurazione, testi, HUD, schermata) diventa `crate::game::customhud`.
+# La logica, senza nulla che dipenda dal gioco, in quattro moduli fratelli:
+# l'HUD diventa `crate::game::customhud`, che riesporta anche gli altri tre.
 [[module]]
 id = "runtime"
 file = "crates/horizon-client/src/game.rs"
 name = "customhud"
 source = "runtime.rs"
+
+# Lingue e testi.
+[[module]]
+id = "text"
+file = "crates/horizon-client/src/game.rs"
+name = "customhud_text"
+source = "text.rs"
+
+# La configurazione: valori, limiti, lettura e scrittura.
+[[module]]
+id = "config"
+file = "crates/horizon-client/src/game.rs"
+name = "customhud_config"
+source = "config.rs"
+
+# La logica della schermata delle impostazioni.
+[[module]]
+id = "config-screen"
+file = "crates/horizon-client/src/game.rs"
+name = "customhud_config_screen"
+source = "config_screen.rs"
 
 # Il lato gioco (disegno e input) diventa `crate::game::customhud_screen`.
 [[module]]
@@ -92,7 +114,7 @@ bindings = [
 
 [[injection]]
 id = "screen-input"
-target = "horizon_client::game::<Game<'_> as ApplicationHandler>::window_event"
+target = "horizon_client::game::window_handler::<Game<'_> as ApplicationHandler>::window_event"
 kind = "HEAD"
 cancellable = true
 helper = "input.rs"
