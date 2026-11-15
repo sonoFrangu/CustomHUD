@@ -7,10 +7,13 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.core.BlockPos;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.stats.Stats;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -62,8 +65,32 @@ public final class DayHud {
 
     private static final int MOON_SIZE = 8;
 
+    /**
+     * Icone del meteo 8x8, riga per riga: c nuvola, k nuvola da temporale, d goccia, s neve, b fulmine.
+     * DRY: piove nel mondo ma non qui (deserto, savana...).
+     */
+    private static final String[] RAIN = {
+            "...cc...", ".ccccc..", ".cccccc.", "cccccccc", ".cccccc.", "..d..d..", ".d..d..d", "d..d..d."};
+    private static final String[] SNOW = {
+            "...cc...", ".ccccc..", ".cccccc.", "cccccccc", ".cccccc.", ".s...s..", "...s...s", ".s...s.."};
+    private static final String[] THUNDER = {
+            "...kk...", ".kkkkk..", ".kkkkkk.", "kkkkkkkk", ".kkbkkk.", "...bb...", "....b...", "...b...."};
+    private static final String[] DRY = {
+            "...cc...", ".ccccc..", ".cccccc.", "cccccccc", ".cccccc.", "........", "........", "........"};
+    private static final int WEATHER_SIZE = 8;
+
+    /** Da quanti tick senza dormire possono arrivare i phantom (PhantomSpawner: 3 giorni). */
+    private static final int PHANTOM_TICKS = 72000;
+    /** Ogni quanto chiedere le statistiche al server: il client non le riceve da solo. */
+    private static final long STATS_REQUEST_MILLIS = 10_000;
+
     // Creati al primo frame: i componenti degli item non sono pronti durante l'inizializzazione della mod
-    private ItemStack clockIcon, bedIcon, creativeIcon, adventureIcon, spectatorIcon, goldenAppleIcon, totemIcon;
+    private ItemStack clockIcon, bedIcon, creativeIcon, adventureIcon, spectatorIcon, goldenAppleIcon, totemIcon,
+            phantomIcon;
+    private long lastStatsRequest;
+    private int cachedPhantomDays = -1;
+    private String phantomString = "";
+    private int phantomWidth;
 
     // Cache testo
     private long cachedDays = Long.MIN_VALUE;
@@ -113,6 +140,12 @@ public final class DayHud {
 
         if (clockIcon == null) createIcons();
 
+        String[] weather = config.showWeather && level.isRaining() ? weatherIcon(level, player) : null;
+        boolean showWeather = weather != null;
+        int sinceRest = config.phantomWarning ? timeSinceRest(mc, player) : 0;
+        boolean showPhantom = sinceRest >= PHANTOM_TICKS;
+        if (showPhantom) updatePhantomText(mc.font, sinceRest / 24000);
+
         Font font = mc.font;
         long totalTime = level.getDayTime();
         long timeOfDay = Math.floorMod(totalTime, 24000L);
@@ -128,7 +161,7 @@ public final class DayHud {
         }
         if (showCountdown) updateCountdownText(font, timeOfDay);
 
-        boolean milestone = config.milestones && isMilestone(days);
+        boolean milestone = config.milestones && config.isMilestone(days);
         handleCelebrationSound(player, level, days, milestone && config.milestoneSound);
 
         int alpha = Math.round(config.opacity * 2.55f);
@@ -142,8 +175,10 @@ public final class DayHud {
         int totalTextWidth = 0;
         if (showDays) totalTextWidth += 13 + dayWidth;
         if (showClock) totalTextWidth += (totalTextWidth > 0 ? 15 : 0) + 13 + timeWidth;
+        if (showWeather) totalTextWidth += (totalTextWidth > 0 ? 6 : 0) + WEATHER_SIZE;
         if (showCountdown) totalTextWidth += (totalTextWidth > 0 ? 6 : 0) + countdownWidth;
         if (showMoon) totalTextWidth += (totalTextWidth > 0 ? 6 : 0) + MOON_SIZE;
+        if (showPhantom) totalTextWidth += (totalTextWidth > 0 ? 6 : 0) + 13 + phantomWidth;
         boolean hasText = totalTextWidth > 0;
 
         // Scala attorno al bordo dello schermo più vicino, poi sposta di quanto scelto dall'utente
@@ -185,15 +220,29 @@ public final class DayHud {
             x += timeWidth;
         }
 
-        if (showCountdown) {
+        if (showWeather) {
             if (showDays || showClock) x += 6;
+            drawPixels(g, weather, x, textY, alpha);
+            x += WEATHER_SIZE;
+        }
+
+        if (showCountdown) {
+            if (showDays || showClock || showWeather) x += 6;
             g.drawString(font, countdownString, x, textY, alpha << 24 | 0xBBBBBB, true);
             x += countdownWidth;
         }
 
         if (showMoon) {
-            if (showDays || showClock || showCountdown) x += 6;
+            if (showDays || showClock || showWeather || showCountdown) x += 6;
             drawMoon(g, x, textY, (int) Math.floorMod(days, 8L), alpha);
+            x += MOON_SIZE;
+        }
+
+        if (showPhantom) {
+            if (showDays || showClock || showWeather || showCountdown || showMoon) x += 6;
+            drawScaledItem(g, phantomIcon, x, textY - 1);
+            x += 13;
+            g.drawString(font, phantomString, x, textY, alpha << 24 | 0xFF5555, true);
         }
 
         if (showBar) {
@@ -259,7 +308,7 @@ public final class DayHud {
                                CustomHudConfig config) {
         long days = Math.floorDiv(level.getDayTime(), 24000L);
         updateDayText(mc.font, days);
-        boolean milestone = config.milestones && isMilestone(days);
+        boolean milestone = config.milestones && config.isMilestone(days);
         handleCelebrationSound(player, level, days, milestone && config.milestoneSound);
 
         int alpha = Math.round(config.opacity * 2.55f);
@@ -295,6 +344,40 @@ public final class DayHud {
         spectatorIcon = new ItemStack(Items.ENDER_EYE);
         goldenAppleIcon = new ItemStack(Items.GOLDEN_APPLE);
         totemIcon = new ItemStack(Items.TOTEM_OF_UNDYING);
+        phantomIcon = new ItemStack(Items.PHANTOM_MEMBRANE);
+    }
+
+    /** L'icona del meteo dove si trova il giocatore: temporale, neve, pioggia o niente (bioma secco). */
+    private static String[] weatherIcon(ClientLevel level, LocalPlayer player) {
+        if (level.isThundering()) return THUNDER;
+        BlockPos pos = player.blockPosition();
+        return switch (level.getBiome(pos).value().getPrecipitationAt(pos, level.getSeaLevel())) {
+            case RAIN -> RAIN;
+            case SNOW -> SNOW;
+            case NONE -> DRY;
+        };
+    }
+
+    /**
+     * Tick dall'ultima dormita (statistica time_since_rest), solo per chi i phantom li attira
+     * (sopravvivenza e avventura). Il server la manda solo su richiesta: la si chiede ogni tanto.
+     */
+    private int timeSinceRest(Minecraft mc, LocalPlayer player) {
+        GameType mode = mc.gameMode.getPlayerMode();
+        if (mode != GameType.SURVIVAL && mode != GameType.ADVENTURE) return 0;
+        long now = System.currentTimeMillis();
+        if (now - lastStatsRequest >= STATS_REQUEST_MILLIS && mc.getConnection() != null) {
+            lastStatsRequest = now;
+            mc.getConnection().send(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.REQUEST_STATS));
+        }
+        return player.getStats().getValue(Stats.CUSTOM, Stats.TIME_SINCE_REST);
+    }
+
+    private void updatePhantomText(Font font, int days) {
+        if (days == cachedPhantomDays) return;
+        cachedPhantomDays = days;
+        phantomString = Integer.toString(days);
+        phantomWidth = font.width(phantomString);
     }
 
     private void updateDayText(Font font, long days) {
@@ -332,10 +415,6 @@ public final class DayHud {
         String left = String.format("%d:%02d", seconds / 60, seconds % 60);
         countdownString = Component.translatable(night ? "hud.customhud.day_in" : "hud.customhud.night_in", left).getString();
         countdownWidth = font.width(countdownString);
-    }
-
-    private static boolean isMilestone(long days) {
-        return days > 0 && (days == 50 || days == 365 || days % 100 == 0);
     }
 
     /** Suona solo quando il giorno avanza davvero, non quando si entra in un mondo già al traguardo. */
@@ -435,6 +514,33 @@ public final class DayHud {
 
     private static void fillRow(GuiGraphics g, int from, int to, int y, int color) {
         if (from < to) g.fill(from, y, to, y + 1, color);
+    }
+
+    /** Disegna un'icona a pixel (una stringa per riga), unendo i pixel uguali vicini. */
+    private static void drawPixels(GuiGraphics g, String[] rows, int x, int y, int alpha) {
+        for (int row = 0; row < rows.length; row++) {
+            String line = rows[row];
+            int start = 0;
+            while (start < line.length()) {
+                char c = line.charAt(start);
+                int end = start + 1;
+                while (end < line.length() && line.charAt(end) == c) end++;
+                int rgb = pixelColor(c);
+                if (rgb >= 0) fillRow(g, x + start, x + end, y + row, alpha << 24 | rgb);
+                start = end;
+            }
+        }
+    }
+
+    private static int pixelColor(char c) {
+        return switch (c) {
+            case 'c' -> 0xE6E9EF;
+            case 'k' -> 0x7C8091;
+            case 'd' -> 0x5DA9E9;
+            case 's' -> 0xFFFFFF;
+            case 'b' -> 0xFFD83D;
+            default -> -1;
+        };
     }
 
     private static int barColor(BarTheme theme, long ticks) {
